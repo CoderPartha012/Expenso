@@ -1,0 +1,57 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.app-background {
+  background-image: url('https://images.unsplash.com/photo-1554224155-6726b3ff858f?auto=format&fit=crop&q=80&w=2942');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+}
+
+/* Chart responsiveness */
+.recharts-wrapper {
+  max-width: 100%;
+  height: auto !important;
+}
+
+.recharts-surface {
+  overflow: visible;
+}
+
+/* Enhanced tooltips */
+.recharts-tooltip-wrapper {
+  outline: none;
+}
+
+/* Better legend visibility */
+.recharts-legend-item {
+  margin: 0 8px !important;
+}
+
+.recharts-legend-item-text {
+  margin-left: 4px;
+  color: #1f2937 !important;
+}
+
+/* Improved axis labels */
+.recharts-cartesian-axis-tick-value {
+  font-size: 12px;
+  fill: #1f2937 !important;
+}
+
+@media (min-width: 768px) {
+  .recharts-cartesian-axis-tick-value {
+    font-size: 14px;
+  }
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.chart-container {
+  animation: fadeIn 0.3s ease-out;
+}
