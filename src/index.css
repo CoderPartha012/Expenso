@@ -2,56 +2,105 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Typography ──────────────────────────────────────────────────────────── */
+@layer base {
+  html {
+    font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Financial numbers: slightly wider tracking for readability */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.01em;
+  }
+}
+
+/* ── Smooth dark-mode transitions ────────────────────────────────────────── */
+*, *::before, *::after {
+  transition-property: background-color, border-color, color;
+  transition-timing-function: ease;
+  transition-duration: 250ms;
+}
+/* Reset transition for things that need their own timing */
+button, a, [role="button"] {
+  transition-duration: 150ms;
+}
+/* Keep animation transforms fast */
+[data-framer-component], .motion-div {
+  transition-property: none;
+}
+
+/* ── App background — light ──────────────────────────────────────────────── */
 .app-background {
-  background-image: url('https://images.unsplash.com/photo-1554224155-6726b3ff858f?auto=format&fit=crop&q=80&w=2942');
-  background-size: cover;
-  background-position: center;
+  background-color: #f1f5f9;
+  background-image:
+    radial-gradient(ellipse at 20% 15%, rgba(99, 102, 241, 0.13) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 10%, rgba(168, 85, 247, 0.10) 0%, transparent 50%),
+    radial-gradient(ellipse at 70% 88%, rgba(59, 130, 246, 0.09) 0%, transparent 50%),
+    radial-gradient(ellipse at 12% 80%, rgba(139, 92, 246, 0.08) 0%, transparent 50%);
   background-attachment: fixed;
 }
 
-/* Chart responsiveness */
+/* ── App background — dark ───────────────────────────────────────────────── */
+.dark .app-background {
+  background-color: #0f172a;
+  background-image:
+    radial-gradient(ellipse at 20% 15%, rgba(99, 102, 241, 0.09) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 10%, rgba(168, 85, 247, 0.07) 0%, transparent 50%),
+    radial-gradient(ellipse at 70% 88%, rgba(59, 130, 246, 0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 12% 80%, rgba(139, 92, 246, 0.06) 0%, transparent 50%);
+  background-attachment: fixed;
+}
+
+/* ── Glass-morphism nav ──────────────────────────────────────────────────── */
+.glass-morphism {
+  background: rgba(241, 245, 249, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.dark .glass-morphism {
+  background: rgba(15, 23, 42, 0.85);
+}
+
+/* ── Recharts overrides ──────────────────────────────────────────────────── */
 .recharts-wrapper {
   max-width: 100%;
   height: auto !important;
 }
-
 .recharts-surface {
   overflow: visible;
 }
-
-/* Enhanced tooltips */
 .recharts-tooltip-wrapper {
   outline: none;
 }
-
-/* Better legend visibility */
 .recharts-legend-item {
   margin: 0 8px !important;
 }
-
 .recharts-legend-item-text {
   margin-left: 4px;
-  color: #1f2937 !important;
+  color: #475569 !important;
 }
-
-/* Improved axis labels */
 .recharts-cartesian-axis-tick-value {
-  font-size: 12px;
-  fill: #1f2937 !important;
+  font-size: 11px;
+  fill: #94a3b8 !important;
+  font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
 }
 
-@media (min-width: 768px) {
-  .recharts-cartesian-axis-tick-value {
-    font-size: 14px;
-  }
+/* Dark recharts */
+.dark .recharts-legend-item-text {
+  color: #94a3b8 !important;
+}
+.dark .recharts-cartesian-axis-tick-value {
+  fill: #64748b !important;
 }
 
-/* Animations */
+/* ── Animations ──────────────────────────────────────────────────────────── */
 @keyframes fadeIn {
   from { opacity: 0; }
-  to { opacity: 1; }
+  to   { opacity: 1; }
 }
-
 .chart-container {
   animation: fadeIn 0.3s ease-out;
 }
