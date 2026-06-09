@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useExpenseStore } from '../store';
 import { motion } from 'framer-motion';
 import {
@@ -38,13 +38,15 @@ const Dashboard = () => {
   const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
   const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
 
+  const localDate = (s: string) => new Date(`${s}T00:00:00`);
+
   const monthlyTxns = transactions.filter(t => {
-    const d = new Date(t.date);
+    const d = localDate(t.date);
     return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
   });
 
   const lastMonthTxns = transactions.filter(t => {
-    const d = new Date(t.date);
+    const d = localDate(t.date);
     return d.getMonth() === lastMonth && d.getFullYear() === lastMonthYear;
   });
 
@@ -138,13 +140,14 @@ const Dashboard = () => {
           onChange={e => setSearchTerm(e.target.value)}
           className="w-full pl-10 pr-4 py-3 rounded-2xl shadow-sm border transition-colors duration-150
                      bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700
-                     text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-600
+                     text-base sm:text-sm text-slate-900 dark:text-slate-100
+                     placeholder-slate-400 dark:placeholder-slate-600
                      focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
         />
       </div>
 
       {/* Financial Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div id="tour-metrics" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {metrics.map((metric, index) => {
           const Icon = metric.icon;
           return (
@@ -208,10 +211,10 @@ const Dashboard = () => {
 
       {/* Charts and Transaction List */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
+        <div id="tour-transactions" className="lg:col-span-2">
           <TransactionList dateRange="month" searchTerm={searchTerm} />
         </div>
-        <div>
+        <div id="tour-chart">
           <ExpenseChart />
         </div>
       </div>

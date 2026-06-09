@@ -50,7 +50,7 @@ const AddTransaction = () => {
     type:          'expense' as 'income' | 'expense',
     category:      categories[0]?.id ?? '',
     description:   '',
-    date:          new Date().toISOString().split('T')[0],
+    date:          (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })(),
     paymentMethod: 'upi' as string,
   });
 
@@ -82,6 +82,7 @@ const AddTransaction = () => {
     if (!formData.amount || parseFloat(formData.amount) <= 0) errs.amount = 'Enter a valid amount';
     if (!formData.description.trim()) errs.description = 'Description is required';
     if (!formData.category) errs.category = 'Select a category';
+    if (!formData.date) errs.date = 'Date is required';
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -105,7 +106,7 @@ const AddTransaction = () => {
     navigate('/');
   };
 
-  const inputBase = `w-full px-4 py-3 rounded-2xl border text-sm transition-colors
+  const inputBase = `w-full px-4 py-3 rounded-2xl border text-base sm:text-sm transition-colors
                      focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent
                      bg-slate-50 dark:bg-slate-800
                      border-slate-100 dark:border-slate-700
@@ -281,9 +282,10 @@ const AddTransaction = () => {
             <input
               type="date"
               value={formData.date}
-              onChange={e => setFormData(f => ({ ...f, date: e.target.value }))}
-              className={inputBase}
+              onChange={e => { setFormData(f => ({ ...f, date: e.target.value })); clearErr('date'); }}
+              className={`${inputBase} ${errors.date ? 'border-rose-300 dark:border-rose-700 bg-rose-50 dark:bg-rose-900/20' : ''}`}
             />
+            {errors.date && <p className="mt-1 text-xs text-rose-500 dark:text-rose-400">{errors.date}</p>}
           </div>
 
           {/* Recurring toggle */}

@@ -4,6 +4,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard,
   Plus,
+  Receipt,
+  BarChart2,
+  FileText,
+  Settings,
   ChevronLeft,
   ChevronRight,
   Wallet,
@@ -16,12 +20,16 @@ import { useExpenseStore } from '../store';
 interface NavItem {
   icon: React.ElementType;
   label: string;
+  mobileLabel: string;
   href: string;
 }
 
 const navItems: NavItem[] = [
-  { icon: LayoutDashboard, label: 'Dashboard',       href: '/' },
-  { icon: Plus,            label: 'Add Transaction', href: '/add-transaction' },
+  { icon: LayoutDashboard, label: 'Dashboard',    mobileLabel: 'Home',     href: '/'             },
+  { icon: Receipt,         label: 'Transactions', mobileLabel: 'History',  href: '/transactions' },
+  { icon: FileText,        label: 'Reports',      mobileLabel: 'Reports',  href: '/reports'      },
+  { icon: BarChart2,       label: 'Analytics',    mobileLabel: 'Charts',   href: '/charts'       },
+  { icon: Settings,        label: 'Settings',     mobileLabel: 'Settings', href: '/settings'     },
 ];
 
 interface SidebarProps {
@@ -92,6 +100,7 @@ const Sidebar = ({ onCollapseChange }: SidebarProps) => {
         {/* Quick Add */}
         <div className={`px-3 pt-3 pb-1 ${isCollapsed ? 'flex justify-center' : ''}`}>
           <button
+            id="tour-add-btn"
             onClick={() => navigate('/add-transaction')}
             title="Quick Add"
             className={`flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800
@@ -136,7 +145,6 @@ const Sidebar = ({ onCollapseChange }: SidebarProps) => {
 
         {/* Footer: theme toggle + collapse */}
         <div className="p-3 border-t border-slate-100 dark:border-slate-800 space-y-0.5">
-          {/* Theme toggle */}
           <button
             onClick={toggleTheme}
             title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
@@ -156,7 +164,6 @@ const Sidebar = ({ onCollapseChange }: SidebarProps) => {
             )}
           </button>
 
-          {/* Collapse toggle */}
           <button
             onClick={toggleCollapse}
             title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
@@ -175,11 +182,12 @@ const Sidebar = ({ onCollapseChange }: SidebarProps) => {
         </div>
       </motion.aside>
 
-      {/* ── Mobile Bottom Navigation ─────────────────────────────────────── */}
+      {/* ── Mobile Bottom Navigation (4 items) ──────────────────────────── */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden
                       bg-white dark:bg-slate-900
-                      border-t border-slate-200 dark:border-slate-800">
-        <div className="flex items-stretch justify-around h-16">
+                      border-t border-slate-200 dark:border-slate-800
+                      safe-area-inset-bottom">
+        <div className="flex items-stretch h-16">
           {navItems.map(item => {
             const isActive = location.pathname === item.href;
             const Icon = item.icon;
@@ -201,22 +209,27 @@ const Sidebar = ({ onCollapseChange }: SidebarProps) => {
                   />
                 )}
                 <Icon className="h-5 w-5" />
-                <span className="text-xs font-medium">{item.label}</span>
+                <span className="text-[10px] font-medium leading-none">{item.mobileLabel}</span>
               </button>
             );
           })}
-
-          {/* FAB Quick Add */}
-          <button
-            onClick={() => navigate('/add-transaction')}
-            className="flex flex-col items-center justify-center flex-1 text-slate-400 dark:text-slate-500"
-          >
-            <div className="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-300/40 -mt-5 mb-0.5">
-              <Plus className="h-5 w-5 text-white" />
-            </div>
-          </button>
         </div>
       </nav>
+
+      {/* ── Mobile FAB (floating above bottom nav) ───────────────────────── */}
+      <button
+        type="button"
+        onClick={() => navigate('/add-transaction')}
+        title="Add transaction"
+        className="fixed bottom-20 right-4 z-50 lg:hidden
+                   w-14 h-14 rounded-full bg-indigo-600
+                   flex items-center justify-center
+                   shadow-lg shadow-indigo-500/40
+                   hover:bg-indigo-700 active:scale-95
+                   transition-all duration-150"
+      >
+        <Plus className="h-6 w-6 text-white" />
+      </button>
     </>
   );
 };

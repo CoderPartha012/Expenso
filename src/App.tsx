@@ -1,10 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { Sun, Moon, Wallet } from 'lucide-react';
 import { Toaster } from 'sonner';
 import Dashboard from './components/Dashboard';
 import AddTransaction from './components/AddTransaction';
 import Sidebar from './components/Sidebar';
+import TransactionsPage from './pages/TransactionsPage';
+import ChartsPage from './pages/ChartsPage';
+import SettingsPage from './pages/SettingsPage';
+import ReportsPage from './pages/ReportsPage';
+import OnboardingModal from './components/OnboardingModal';
+import AppTour from './components/AppTour';
 import { useExpenseStore } from './store';
 
 // Applies / removes the `dark` class on <html> whenever theme changes.
@@ -14,6 +20,24 @@ const ThemeManager = () => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
   }, [theme]);
   return null;
+};
+
+// Renders the onboarding modal (new users) and the feature tour (post-onboarding, dashboard only).
+const Overlays = () => {
+  const { hasOnboarded, hasToured, setOnboarded, loadSampleData } = useExpenseStore();
+  const location = useLocation();
+  const onDashboard = location.pathname === '/';
+
+  return (
+    <>
+      {!hasOnboarded && (
+        <OnboardingModal onClose={setOnboarded} onLoadSample={loadSampleData} />
+      )}
+      {hasOnboarded && !hasToured && onDashboard && (
+        <AppTour />
+      )}
+    </>
+  );
 };
 
 // Global keyboard shortcut: N → open new transaction form.
@@ -41,6 +65,7 @@ function App() {
     <Router>
       <ThemeManager />
       <KeyboardShortcuts />
+      <Overlays />
 
       <div className="min-h-screen app-background text-slate-900 dark:text-slate-100">
         <Sidebar onCollapseChange={setIsSidebarCollapsed} />
@@ -80,6 +105,10 @@ function App() {
             <Routes>
               <Route path="/" element={<Dashboard />} />
               <Route path="/add-transaction" element={<AddTransaction />} />
+              <Route path="/transactions" element={<TransactionsPage />} />
+              <Route path="/charts" element={<ChartsPage />} />
+              <Route path="/reports" element={<ReportsPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
             </Routes>
           </main>
         </div>

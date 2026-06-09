@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { useExpenseStore } from '../store';
 import {
   format,
@@ -10,7 +12,7 @@ import {
   isToday, isYesterday,
 } from 'date-fns';
 import { DateRange, Transaction, FilterState } from '../types';
-import { Trash2, Check, PlusCircle, Receipt, Filter, X, AlertTriangle } from 'lucide-react';
+import { Trash2, Check, PlusCircle, Receipt, Filter, X, AlertTriangle, FileDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 
@@ -97,14 +99,17 @@ const TransactionList: React.FC<Props> = ({ dateRange, searchTerm }) => {
       all:   null,
     };
     const bounds = boundsMap[dateRange] ?? null;
+    const localDate = (s: string) => { const d = new Date(`${s}T00:00:00`); return isNaN(d.getTime()) ? null : d; };
     return transactions.filter(t => {
-      if (bounds && !isWithinInterval(new Date(t.date), bounds)) return false;
+      const d = localDate(t.date);
+      if (!d) return false;
+      if (bounds && !isWithinInterval(d, bounds)) return false;
       if (searchTerm) {
         const q = searchTerm.toLowerCase();
         const cat = categories.find(c => c.id === t.category)?.name.toLowerCase() || '';
         return t.description.toLowerCase().includes(q) || cat.includes(q) || t.amount.toString().includes(q);
       }
-      if (filters.date && !format(new Date(t.date), 'yyyy-MM-dd').includes(filters.date)) return false;
+      if (filters.date && !format(d, 'yyyy-MM-dd').includes(filters.date)) return false;
       if (filters.category) {
         const cat = categories.find(c => c.id === t.category)?.name.toLowerCase();
         if (!cat?.includes(filters.category.toLowerCase())) return false;
@@ -195,6 +200,62 @@ const TransactionList: React.FC<Props> = ({ dateRange, searchTerm }) => {
   };
   const cancelEdit = () => setEditingId(null);
 
+  const exportPDF = () => {
+    try {
+      const doc = new jsPDF();
+
+      doc.setFontSize(18);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Transaction Report', 14, 22);
+
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(100);
+      doc.text(`Generated: ${format(new Date(), 'dd MMM yyyy, hh:mm a')}`, 14, 30);
+
+      const rows = filteredTransactions.map(t => {
+        const cat = categories.find(c => c.id === t.category);
+        return [
+          format(new Date(`${t.date}T00:00:00`), 'dd MMM yyyy'),
+          t.description || 'Untitled',
+          cat?.name ?? 'Uncategorized',
+          t.type === 'income'
+            ? `+₹${t.amount.toLocaleString('en-IN')}`
+            : `-₹${t.amount.toLocaleString('en-IN')}`,
+          t.type === 'income' ? 'Income' : 'Expense',
+        ];
+      });
+
+      autoTable(doc, {
+        head: [['Date', 'Description', 'Category', 'Amount', 'Type']],
+        body: rows,
+        startY: 36,
+        styles: { fontSize: 9, cellPadding: 3 },
+        headStyles: { fillColor: [79, 70, 229], textColor: 255, fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
+        columnStyles: { 3: { halign: 'right' } },
+      });
+
+      const finalY: number = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10;
+      const totalIncome   = filteredTransactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+      const totalExpenses = filteredTransactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+
+      doc.setFontSize(10);
+      doc.setTextColor(0);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`Total Income:    ₹${totalIncome.toLocaleString('en-IN')}`, 14, finalY);
+      doc.text(`Total Expenses:  ₹${totalExpenses.toLocaleString('en-IN')}`, 14, finalY + 7);
+      doc.text(`Net Balance:     ₹${(totalIncome - totalExpenses).toLocaleString('en-IN')}`, 14, finalY + 14);
+
+      doc.save('transactions.pdf');
+      toast.success('PDF exported', {
+        description: `${filteredTransactions.length} transaction${filteredTransactions.length !== 1 ? 's' : ''} exported`,
+      });
+    } catch {
+      toast.error('Failed to export PDF', { description: 'Please try again' });
+    }
+  };
+
   const activeFilterCount = Object.entries(filters).filter(
     ([k, v]) => k === 'type' ? v !== 'all' : v !== ''
   ).length;
@@ -211,6 +272,7 @@ const TransactionList: React.FC<Props> = ({ dateRange, searchTerm }) => {
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-800">
+        {/* Left: title + count */}
         <div className="flex items-center gap-2">
           <h2 className="text-base font-semibold text-slate-900 dark:text-white">Transactions</h2>
           {!isLoading && filteredTransactions.length > 0 && (
@@ -220,84 +282,100 @@ const TransactionList: React.FC<Props> = ({ dateRange, searchTerm }) => {
           )}
         </div>
 
-        {/* Filter button */}
-        <div className="relative">
-          <button
-            onClick={() => setFilterOpen(v => !v)}
-            className={`flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-xl border transition-colors ${
-              activeFilterCount > 0
-                ? 'border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400'
-                : 'border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-600'
-            }`}
-          >
-            <Filter className="h-3.5 w-3.5" />
-            Filters
-            {activeFilterCount > 0 && (
-              <span className="w-4 h-4 rounded-full bg-indigo-600 text-white text-[10px] font-bold flex items-center justify-center">
-                {activeFilterCount}
-              </span>
-            )}
-          </button>
+        {/* Right: export + filter */}
+        <div className="flex items-center gap-2">
+          {/* Export PDF */}
+          {!isLoading && filteredTransactions.length > 0 && (
+            <button
+              onClick={exportPDF}
+              className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-xl border transition-colors
+                         border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400
+                         hover:border-slate-300 dark:hover:border-slate-600 hover:text-slate-700 dark:hover:text-slate-200"
+            >
+              <FileDown className="h-3.5 w-3.5" />
+              Export
+            </button>
+          )}
 
-          <AnimatePresence>
-            {filterOpen && (
-              <motion.div
-                initial={{ opacity: 0, y: -8, scale: 0.97 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -8, scale: 0.97 }}
-                transition={{ duration: 0.15 }}
-                className="absolute right-0 top-full mt-2 z-20 rounded-2xl shadow-xl border w-64 p-4 space-y-3
-                           bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">Filters</span>
-                  <button onClick={() => setFilterOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
+          {/* Filter button */}
+          <div className="relative">
+            <button
+              onClick={() => setFilterOpen(v => !v)}
+              className={`flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-xl border transition-colors ${
+                activeFilterCount > 0
+                  ? 'border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400'
+                  : 'border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-600'
+              }`}
+            >
+              <Filter className="h-3.5 w-3.5" />
+              Filters
+              {activeFilterCount > 0 && (
+                <span className="w-4 h-4 rounded-full bg-indigo-600 text-white text-[10px] font-bold flex items-center justify-center">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
 
-                {[
-                  { label: 'Type',            field: 'type'     as const },
-                  { label: 'Category',        field: 'category' as const },
-                  { label: 'Date',            field: 'date'     as const },
-                  { label: 'Amount contains', field: 'amount'   as const },
-                ].map(({ label, field }) => (
-                  <div key={field}>
-                    <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{label}</label>
-                    {field === 'type' ? (
-                      <select value={filters.type} onChange={e => setFilters({ ...filters, type: e.target.value as FilterState['type'] })} className={inputCls}>
-                        <option value="all">All</option>
-                        <option value="income">Income</option>
-                        <option value="expense">Expense</option>
-                      </select>
-                    ) : field === 'category' ? (
-                      <select value={filters.category} onChange={e => setFilters({ ...filters, category: e.target.value })} className={inputCls}>
-                        <option value="">All</option>
-                        {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
-                      </select>
-                    ) : (
-                      <input
-                        type={field === 'date' ? 'date' : 'number'}
-                        value={filters[field]}
-                        onChange={e => setFilters({ ...filters, [field]: e.target.value })}
-                        className={inputCls}
-                        placeholder={field === 'amount' ? 'e.g. 1000' : undefined}
-                      />
-                    )}
+            <AnimatePresence>
+              {filterOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8, scale: 0.97 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -8, scale: 0.97 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute right-0 top-full mt-2 z-20 rounded-2xl shadow-xl border w-64 p-4 space-y-3
+                             bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">Filters</span>
+                    <button onClick={() => setFilterOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+                      <X className="h-4 w-4" />
+                    </button>
                   </div>
-                ))}
 
-                {activeFilterCount > 0 && (
-                  <button
-                    onClick={() => setFilters({ date: '', category: '', description: '', amount: '', type: 'all' })}
-                    className="w-full text-sm text-rose-600 dark:text-rose-400 hover:text-rose-700 py-1.5 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors"
-                  >
-                    Clear all filters
-                  </button>
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
+                  {[
+                    { label: 'Type',            field: 'type'     as const },
+                    { label: 'Category',        field: 'category' as const },
+                    { label: 'Date',            field: 'date'     as const },
+                    { label: 'Amount contains', field: 'amount'   as const },
+                  ].map(({ label, field }) => (
+                    <div key={field}>
+                      <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{label}</label>
+                      {field === 'type' ? (
+                        <select value={filters.type} onChange={e => setFilters({ ...filters, type: e.target.value as FilterState['type'] })} className={inputCls}>
+                          <option value="all">All</option>
+                          <option value="income">Income</option>
+                          <option value="expense">Expense</option>
+                        </select>
+                      ) : field === 'category' ? (
+                        <select value={filters.category} onChange={e => setFilters({ ...filters, category: e.target.value })} className={inputCls}>
+                          <option value="">All</option>
+                          {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                        </select>
+                      ) : (
+                        <input
+                          type={field === 'date' ? 'date' : 'number'}
+                          value={filters[field]}
+                          onChange={e => setFilters({ ...filters, [field]: e.target.value })}
+                          className={inputCls}
+                          placeholder={field === 'amount' ? 'e.g. 1000' : undefined}
+                        />
+                      )}
+                    </div>
+                  ))}
+
+                  {activeFilterCount > 0 && (
+                    <button
+                      onClick={() => setFilters({ date: '', category: '', description: '', amount: '', type: 'all' })}
+                      className="w-full text-sm text-rose-600 dark:text-rose-400 hover:text-rose-700 py-1.5 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors"
+                    >
+                      Clear all filters
+                    </button>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
       </div>
 
