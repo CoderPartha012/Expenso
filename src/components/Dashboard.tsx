@@ -13,6 +13,7 @@ import {
 import { LineChart, Line, ResponsiveContainer } from 'recharts';
 import TransactionList from './TransactionList';
 import ExpenseChart from './ExpenseChart';
+import BudgetOverview from './BudgetOverview';
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('en-IN', {
@@ -208,6 +209,9 @@ const Dashboard = () => {
           );
         })}
       </div>
+
+      {/* Budget Overview */}
+      <BudgetOverview />
 
       {/* Charts and Transaction List */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

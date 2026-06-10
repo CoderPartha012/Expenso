@@ -5,7 +5,6 @@ import {
   Wallet, IndianRupee, ArrowRightLeft, BarChart2,
   ChevronRight, ChevronLeft, Sparkles, X,
 } from 'lucide-react';
-import { useExpenseStore } from '../store';
 
 // ─── Step definitions ─────────────────────────────────────────────────────────
 
@@ -172,6 +171,7 @@ const OnboardingModal = ({ onClose, onLoadSample }: Props) => {
                     <button
                       type="button"
                       onClick={onClose}
+                      aria-label="Close"
                       className="absolute top-4 right-4 p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-300
                                  hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                     >

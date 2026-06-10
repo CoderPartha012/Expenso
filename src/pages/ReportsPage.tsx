@@ -147,118 +147,187 @@ const ReportsPage = () => {
   // ── PDF export ──────────────────────────────────────────────────────────────
   const exportPDF = () => {
     try {
-      const doc  = new jsPDF();
-      const pw   = doc.internal.pageSize.width;
-      const ph   = doc.internal.pageSize.height;
+      // PDF-safe amount formatter — jsPDF's built-in Helvetica has no glyph for
+      // the Unicode rupee sign (₹ U+20B9), which causes it to fall back to Courier
+      // for the entire text run. We use the ASCII-safe "Rs." prefix instead.
+      const pdfAmt = (n: number): string => {
+        const abs  = Math.round(Math.abs(n)).toLocaleString('en-IN');
+        return n < 0 ? `-Rs.${abs}` : `Rs.${abs}`;
+      };
+      const pdfPct = (n: number) => `${n.toFixed(1)}%`;
 
-      // Header bar
+      const doc = new jsPDF();
+      const pw  = doc.internal.pageSize.width;   // 210 mm for A4
+      const ph  = doc.internal.pageSize.height;  // 297 mm for A4
+      // Usable width between left/right margins of 14 mm each
+      const UW  = pw - 28;                        // 182 mm
+
+      // ── Header bar ────────────────────────────────────────────────────────
       doc.setFillColor(15, 23, 42);
-      doc.rect(0, 0, pw, 38, 'F');
+      doc.rect(0, 0, pw, 36, 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(18);
       doc.setTextColor(255, 255, 255);
-      doc.setFontSize(20); doc.setFont('helvetica', 'bold');
-      doc.text('Expense Report', 14, 22);
-      doc.setFontSize(8.5); doc.setFont('helvetica', 'normal');
+      doc.text('Expense Report', 14, 20);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
       doc.setTextColor(148, 163, 184);
-      doc.text(`Period: ${range.label}`, pw - 14, 15, { align: 'right' });
-      doc.text(`Generated: ${format(new Date(), 'dd MMM yyyy, HH:mm')}`, pw - 14, 24, { align: 'right' });
+      doc.text(`Period: ${range.label}`, pw - 14, 13, { align: 'right' });
+      doc.text(`Generated: ${format(new Date(), 'dd MMM yyyy, HH:mm')}`, pw - 14, 22, { align: 'right' });
 
-      // Summary band
+      // ── Summary band ──────────────────────────────────────────────────────
       doc.setFillColor(248, 250, 252);
-      doc.rect(0, 38, pw, 30, 'F');
-      const summaryItems = [
-        { label: 'INCOME',       value: fmtINR(income),                 r: 16,  g: 185, b: 129 },
-        { label: 'EXPENSES',     value: fmtINR(expenses),               r: 244, g: 63,  b: 94  },
-        { label: 'NET BALANCE',  value: fmtINR(net),                    r: net >= 0 ? 79 : 244, g: net >= 0 ? 70 : 63, b: net >= 0 ? 229 : 94 },
-        { label: 'SAVINGS RATE', value: `${savingsRate.toFixed(1)}%`,   r: 139, g: 92,  b: 246 },
+      doc.rect(0, 36, pw, 32, 'F');
+      // Subtle separator line
+      doc.setDrawColor(226, 232, 240);
+      doc.line(0, 68, pw, 68);
+
+      type RGB = [number, number, number];
+      const summaryItems: { label: string; value: string; rgb: RGB }[] = [
+        { label: 'INCOME',       value: pdfAmt(income),           rgb: [16, 185, 129]  },
+        { label: 'EXPENSES',     value: pdfAmt(expenses),         rgb: [244, 63, 94]   },
+        { label: 'NET BALANCE',  value: pdfAmt(net),              rgb: net >= 0 ? [79, 70, 229] as RGB : [244, 63, 94] as RGB },
+        { label: 'SAVINGS RATE', value: pdfPct(savingsRate),      rgb: [139, 92, 246]  },
       ];
+      const colW = UW / summaryItems.length;
       summaryItems.forEach((s, i) => {
-        const x = 14 + i * ((pw - 14) / 4);
-        doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(100, 116, 139);
-        doc.text(s.label, x, 48);
-        doc.setFontSize(10.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(s.r, s.g, s.b);
-        doc.text(s.value, x, 59);
+        const x = 14 + i * colW;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7);
+        doc.setTextColor(100, 116, 139);
+        doc.text(s.label, x, 47);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.setTextColor(...s.rgb);
+        doc.text(s.value, x, 60);
       });
 
-      let y = 78;
+      let y = 82;
 
-      // Top spending categories
+      // ── Top spending categories ────────────────────────────────────────────
       if (topCats.length > 0) {
-        doc.setFontSize(11); doc.setFont('helvetica', 'bold'); doc.setTextColor(15, 23, 42);
-        doc.text('Top Spending Categories', 14, y); y += 5;
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.setTextColor(15, 23, 42);
+        doc.text('Top Spending Categories', 14, y);
+        y += 5;
+
+        // Column widths must sum to UW (182 mm): 107 + 48 + 27 = 182
         autoTable(doc, {
           head: [['Category', 'Amount', '% of Expenses']],
           body: topCats.map(c => [
             c.name,
-            fmtINR(c.spent),
-            `${expenses > 0 ? ((c.spent / expenses) * 100).toFixed(1) : 0}%`,
+            pdfAmt(c.spent),
+            `${expenses > 0 ? ((c.spent / expenses) * 100).toFixed(1) : '0.0'}%`,
           ]),
           startY: y,
-          styles:            { fontSize: 9, cellPadding: 3 },
-          headStyles:        { fillColor: [79, 70, 229], textColor: [255, 255, 255], fontStyle: 'bold' },
-          alternateRowStyles: { fillColor: [248, 250, 252] },
-          columnStyles:      { 1: { halign: 'right' }, 2: { halign: 'right' } },
-          margin:            { left: 14, right: 14 },
+          tableWidth: UW,
+          styles:             { font: 'helvetica', fontSize: 9, cellPadding: 3 },
+          headStyles:         { fillColor: [79, 70, 229] as RGB, textColor: [255, 255, 255] as RGB, fontStyle: 'bold' },
+          alternateRowStyles: { fillColor: [248, 250, 252] as RGB },
+          columnStyles: {
+            0: { cellWidth: 107 },
+            1: { cellWidth: 48, halign: 'right' },
+            2: { cellWidth: 27, halign: 'right' },
+          },
+          margin: { left: 14, right: 14 },
         });
         y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10;
       }
 
-      // Budget vs Actual table
+      // ── Budget vs Actual ──────────────────────────────────────────────────
       if (budgetRows.length > 0) {
-        if (y > 210) { doc.addPage(); y = 20; }
-        doc.setFontSize(11); doc.setFont('helvetica', 'bold'); doc.setTextColor(15, 23, 42);
-        doc.text('Budget vs Actual', 14, y); y += 5;
+        if (y > 220) { doc.addPage(); y = 20; }
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.setTextColor(15, 23, 42);
+        doc.text('Budget vs Actual', 14, y);
+        y += 5;
+
+        // Column widths: 64 + 39 + 39 + 40 = 182
         autoTable(doc, {
           head: [['Category', 'Budget', 'Spent', 'Remaining']],
           body: budgetRows.map(r => [
             r.cat.name,
-            r.hasLimit ? fmtINR(r.limit) : '—',
-            fmtINR(r.spent),
-            r.hasLimit ? (r.overBudget ? `-${fmtINR(Math.abs(r.remaining))}` : fmtINR(r.remaining)) : '—',
+            r.hasLimit ? pdfAmt(r.limit) : '—',
+            pdfAmt(r.spent),
+            r.hasLimit ? pdfAmt(r.remaining) : '—',
           ]),
           startY: y,
-          styles:            { fontSize: 9, cellPadding: 3 },
-          headStyles:        { fillColor: [30, 41, 59], textColor: [255, 255, 255], fontStyle: 'bold' },
-          alternateRowStyles: { fillColor: [248, 250, 252] },
-          columnStyles:      { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' } },
-          margin:            { left: 14, right: 14 },
+          tableWidth: UW,
+          styles:             { font: 'helvetica', fontSize: 9, cellPadding: 3 },
+          headStyles:         { fillColor: [30, 41, 59] as RGB, textColor: [255, 255, 255] as RGB, fontStyle: 'bold' },
+          alternateRowStyles: { fillColor: [248, 250, 252] as RGB },
+          columnStyles: {
+            0: { cellWidth: 64 },
+            1: { cellWidth: 39, halign: 'right' },
+            2: { cellWidth: 39, halign: 'right' },
+            3: { cellWidth: 40, halign: 'right' },
+          },
+          margin: { left: 14, right: 14 },
           didParseCell: (data) => {
-            if (data.section === 'body' && budgetRows[data.row.index]?.overBudget) {
-              data.cell.styles.textColor = [220, 38, 38] as [number, number, number];
+            if (data.section !== 'body') return;
+            const row = budgetRows[data.row.index];
+            if (row?.overBudget) {
+              data.cell.styles.textColor = [220, 38, 38] as RGB;
             }
           },
         });
         y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10;
       }
 
-      // Transactions table
+      // ── Transactions table ────────────────────────────────────────────────
       if (filtered.length > 0) {
-        if (y > 210) { doc.addPage(); y = 20; }
-        doc.setFontSize(11); doc.setFont('helvetica', 'bold'); doc.setTextColor(15, 23, 42);
-        doc.text(`Transactions (${filtered.length})`, 14, y); y += 5;
+        if (y > 220) { doc.addPage(); y = 20; }
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.setTextColor(15, 23, 42);
+        doc.text(`Transactions (${filtered.length})`, 14, y);
+        y += 5;
+
+        // Column widths: 28 + 65 + 34 + 38 + 17 = 182
         autoTable(doc, {
           head: [['Date', 'Description', 'Category', 'Amount', 'Type']],
           body: filtered.map(t => [
             format(new Date(`${t.date}T00:00:00`), 'dd MMM yyyy'),
             t.description || 'Untitled',
             categories.find(c => c.id === t.category)?.name ?? 'Uncategorized',
-            t.type === 'income' ? `+${fmtINR(t.amount)}` : `-${fmtINR(t.amount)}`,
+            `${t.type === 'income' ? '+' : '-'}Rs.${Math.round(t.amount).toLocaleString('en-IN')}`,
             t.type === 'income' ? 'Income' : 'Expense',
           ]),
           startY: y,
-          styles:            { fontSize: 8, cellPadding: 2.5 },
-          headStyles:        { fillColor: [79, 70, 229], textColor: [255, 255, 255], fontStyle: 'bold' },
-          alternateRowStyles: { fillColor: [248, 250, 252] },
-          columnStyles:      { 3: { halign: 'right' } },
-          margin:            { left: 14, right: 14 },
+          tableWidth: UW,
+          styles:             { font: 'helvetica', fontSize: 8, cellPadding: 2.5 },
+          headStyles:         { fillColor: [79, 70, 229] as RGB, textColor: [255, 255, 255] as RGB, fontStyle: 'bold' },
+          alternateRowStyles: { fillColor: [248, 250, 252] as RGB },
+          columnStyles: {
+            0: { cellWidth: 28 },
+            1: { cellWidth: 65 },
+            2: { cellWidth: 34 },
+            3: { cellWidth: 38, halign: 'right' },
+            4: { cellWidth: 17, halign: 'center' },
+          },
+          margin: { left: 14, right: 14 },
+          didParseCell: (data) => {
+            if (data.section !== 'body' || data.column.index !== 3) return;
+            const t = filtered[data.row.index];
+            if (t) {
+              data.cell.styles.textColor = t.type === 'income'
+                ? [16, 185, 129] as RGB
+                : [244, 63, 94]  as RGB;
+            }
+          },
         });
       }
 
-      // Page footer on every page
+      // ── Page footer on every page ─────────────────────────────────────────
       const pageCount = doc.getNumberOfPages();
       for (let p = 1; p <= pageCount; p++) {
         doc.setPage(p);
-        doc.setFontSize(7.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(148, 163, 184);
-        doc.text(`Expenso · Page ${p} of ${pageCount}`, pw / 2, ph - 8, { align: 'center' });
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7.5);
+        doc.setTextColor(148, 163, 184);
+        doc.text(`Expenso  ·  Page ${p} of ${pageCount}`, pw / 2, ph - 8, { align: 'center' });
       }
 
       doc.save(`expenso-report-${format(new Date(), 'yyyy-MM-dd')}.pdf`);

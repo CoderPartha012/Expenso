@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CSVLink } from 'react-csv';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import { format, subMonths } from 'date-fns';
 import {
   PieChart, Pie, Cell, Tooltip, Label,
@@ -33,7 +33,8 @@ const fmtCompact = (n: number) =>
 
 // ─── Tooltips ─────────────────────────────────────────────────────────────────
 
-interface PieTooltipProps { active?: boolean; payload?: any[]; total: number; }
+interface PiePayloadItem { value: number; name: string; payload: { color: string }; }
+interface PieTooltipProps { active?: boolean; payload?: PiePayloadItem[]; total: number; }
 const PieTooltip = ({ active, payload, total }: PieTooltipProps) => {
   if (!active || !payload?.length) return null;
   const item = payload[0];
@@ -50,19 +51,40 @@ const PieTooltip = ({ active, payload, total }: PieTooltipProps) => {
   );
 };
 
-const ChartTooltip = ({ active, payload, label }: any) => {
+interface ChartPayloadItem { name: string; value: number; fill?: string; stroke?: string; }
+interface ChartTooltipProps { active?: boolean; payload?: ChartPayloadItem[]; label?: string; }
+const ChartTooltip = ({ active, payload, label }: ChartTooltipProps) => {
   if (!active || !payload?.length) return null;
   return (
     <div className="bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl shadow-lg p-3 text-sm min-w-[140px]">
       <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-2">{label}</p>
-      {payload.map((p: any, i: number) => (
-        <div key={i} className="flex items-center gap-2 mt-1">
+      {payload.map(p => (
+        <div key={p.name} className="flex items-center gap-2 mt-1">
           <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: p.fill || p.stroke }} />
           <span className="text-slate-500 dark:text-slate-400 text-xs">{p.name}:</span>
           <span className="font-semibold text-slate-900 dark:text-slate-100 tabular-nums">{fmtINR(p.value)}</span>
         </div>
       ))}
     </div>
+  );
+};
+
+// ─── Donut centre label ───────────────────────────────────────────────────────
+interface DonutLabelProps {
+  viewBox?: { cx?: number; cy?: number };
+  total:    number;
+}
+const DonutLabel = ({ viewBox, total }: DonutLabelProps) => {
+  const cx = viewBox?.cx ?? 0;
+  const cy = viewBox?.cy ?? 0;
+  if (!viewBox?.cx || !viewBox?.cy) return null;
+  return (
+    <g>
+      <text x={cx} y={cy - 9}  textAnchor="middle" fill="#94a3b8" fontSize="11">Total</text>
+      <text x={cx} y={cy + 11} textAnchor="middle" fill="currentColor" fontSize="13" fontWeight="700">
+        {fmtINR(total)}
+      </text>
+    </g>
   );
 };
 
@@ -164,7 +186,7 @@ const ExpenseChart = () => {
     doc.setFont('helvetica', 'bold');
     doc.text(`Total Expenses: ${fmtINR(totalExpense)}`, 14, 80);
     doc.setFont('helvetica', 'normal');
-    (doc as any).autoTable({
+    autoTable(doc, {
       head: [['Category', 'Amount', 'Percentage']],
       body: categoryExpenses.map(item => [
         item.name, fmtINR(item.value),
@@ -184,9 +206,6 @@ const ExpenseChart = () => {
   };
 
   const hasBarData = monthlyIEData.some(d => d.Income > 0 || d.Expenses > 0);
-
-  // Shared axis props — dark-friendly via CSS (recharts axis text is styled in index.css)
-  const axisStyle = { fontSize: 10, fill: 'currentColor' };
 
   return (
     <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
@@ -303,22 +322,11 @@ const ExpenseChart = () => {
                         dataKey="value" nameKey="name"
                         paddingAngle={2} strokeWidth={0}
                       >
-                        {categoryExpenses.map((entry, i) => (
-                          <Cell key={i} fill={entry.color} stroke="rgba(255,255,255,0.3)" strokeWidth={2} />
+                        {categoryExpenses.map(entry => (
+                          <Cell key={entry.id} fill={entry.color} stroke="rgba(255,255,255,0.3)" strokeWidth={2} />
                         ))}
                         <Label
-                          content={({ viewBox }: any) => {
-                            if (!viewBox) return null;
-                            const { cx, cy } = viewBox;
-                            return (
-                              <g>
-                                <text x={cx} y={cy - 9}  textAnchor="middle" fill="#94a3b8" fontSize="11">Total</text>
-                                <text x={cx} y={cy + 11} textAnchor="middle" fill="currentColor" fontSize="13" fontWeight="700">
-                                  {fmtINR(totalExpense)}
-                                </text>
-                              </g>
-                            );
-                          }}
+                          content={<DonutLabel total={totalExpense} />}
                           position="center"
                         />
                       </Pie>
@@ -385,7 +393,7 @@ const ExpenseChart = () => {
 
             {/* BAR */}
             {chartType === 'bar' && (
-              !hasBarData ? <EmptyState /> : (
+              hasBarData ? (
                 <div className="overflow-x-auto -mx-1">
                 <div style={{ minWidth: 320 }}>
                 <ResponsiveContainer width="100%" height={270}>
@@ -408,7 +416,7 @@ const ExpenseChart = () => {
                 </ResponsiveContainer>
                 </div>
                 </div>
-              )
+              ) : <EmptyState />
             )}
           </motion.div>
         </AnimatePresence>

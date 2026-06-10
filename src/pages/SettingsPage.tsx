@@ -1,7 +1,6 @@
 import React from 'react';
-import { Sun, Moon, Info, Trash2 } from 'lucide-react';
+import { Sun, Moon, Info } from 'lucide-react';
 import { useExpenseStore } from '../store';
-import { toast } from 'sonner';
 
 const SettingsPage = () => {
   const { theme, toggleTheme, transactions } = useExpenseStore();

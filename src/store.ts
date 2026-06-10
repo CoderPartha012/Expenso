@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { Transaction, Budget, Theme, Category, SortOption } from './types';
+import { Transaction, Budget, Theme, Category } from './types';
 import { addDays, addMonths, addYears, format } from 'date-fns';
 
 interface ExpenseState {
@@ -19,6 +19,7 @@ interface ExpenseState {
   updateCategory: (category: Category) => void;
   deleteCategory: (id: string) => void;
   processRecurringTransactions: () => void;
+  deleteBudget: (categoryId: string) => void;
   setOnboarded: () => void;
   setToured: () => void;
   loadSampleData: () => void;
@@ -117,6 +118,9 @@ export const useExpenseStore = create<ExpenseState>()(
         set((state) => ({
           budgets: [...state.budgets.filter((b) => b.categoryId !== budget.categoryId), budget],
         })),
+
+      deleteBudget: (categoryId) =>
+        set((state) => ({ budgets: state.budgets.filter((b) => b.categoryId !== categoryId) })),
 
       toggleTheme: () =>
         set((state) => ({ theme: state.theme === 'light' ? 'dark' : 'light' })),

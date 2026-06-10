@@ -202,26 +202,44 @@ const TransactionList: React.FC<Props> = ({ dateRange, searchTerm }) => {
 
   const exportPDF = () => {
     try {
+      // Rs. replaces ₹ — jsPDF's bundled Helvetica has no glyph for U+20B9 (₹)
+      // and falls back to Courier for the entire text run when it encounters it.
+      type RGB = [number, number, number];
+      const pdfAmt = (n: number): string => {
+        const abs = Math.round(Math.abs(n)).toLocaleString('en-IN');
+        return n < 0 ? `-Rs.${abs}` : `Rs.${abs}`;
+      };
+
       const doc = new jsPDF();
+      const pw  = doc.internal.pageSize.width;
+      const ph  = doc.internal.pageSize.height;
+      const UW  = pw - 28; // 182 mm usable width (14 mm margin each side)
 
-      doc.setFontSize(18);
+      // ── Header bar ────────────────────────────────────────────────────────
+      doc.setFillColor(15, 23, 42);
+      doc.rect(0, 0, pw, 32, 'F');
       doc.setFont('helvetica', 'bold');
-      doc.text('Transaction Report', 14, 22);
-
-      doc.setFontSize(10);
+      doc.setFontSize(16);
+      doc.setTextColor(255, 255, 255);
+      doc.text('Transaction Report', 14, 19);
       doc.setFont('helvetica', 'normal');
-      doc.setTextColor(100);
-      doc.text(`Generated: ${format(new Date(), 'dd MMM yyyy, hh:mm a')}`, 14, 30);
+      doc.setFontSize(8);
+      doc.setTextColor(148, 163, 184);
+      doc.text(`Generated: ${format(new Date(), 'dd MMM yyyy, HH:mm')}`, pw - 14, 14, { align: 'right' });
+      doc.text(
+        `${filteredTransactions.length} transaction${filteredTransactions.length !== 1 ? 's' : ''}`,
+        pw - 14, 24, { align: 'right' },
+      );
 
+      // ── Transaction table ─────────────────────────────────────────────────
+      // Column widths must sum to UW (182 mm): 28+65+34+38+17 = 182
       const rows = filteredTransactions.map(t => {
         const cat = categories.find(c => c.id === t.category);
         return [
           format(new Date(`${t.date}T00:00:00`), 'dd MMM yyyy'),
           t.description || 'Untitled',
           cat?.name ?? 'Uncategorized',
-          t.type === 'income'
-            ? `+₹${t.amount.toLocaleString('en-IN')}`
-            : `-₹${t.amount.toLocaleString('en-IN')}`,
+          `${t.type === 'income' ? '+' : '-'}Rs.${Math.round(t.amount).toLocaleString('en-IN')}`,
           t.type === 'income' ? 'Income' : 'Expense',
         ];
       });
@@ -229,25 +247,70 @@ const TransactionList: React.FC<Props> = ({ dateRange, searchTerm }) => {
       autoTable(doc, {
         head: [['Date', 'Description', 'Category', 'Amount', 'Type']],
         body: rows,
-        startY: 36,
-        styles: { fontSize: 9, cellPadding: 3 },
-        headStyles: { fillColor: [79, 70, 229], textColor: 255, fontStyle: 'bold' },
-        alternateRowStyles: { fillColor: [248, 250, 252] },
-        columnStyles: { 3: { halign: 'right' } },
+        startY: 40,
+        tableWidth: UW,
+        styles:             { font: 'helvetica', fontSize: 9, cellPadding: 3 },
+        headStyles:         { fillColor: [79, 70, 229] as RGB, textColor: [255, 255, 255] as RGB, fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [248, 250, 252] as RGB },
+        columnStyles: {
+          0: { cellWidth: 28 },
+          1: { cellWidth: 65 },
+          2: { cellWidth: 34 },
+          3: { cellWidth: 38, halign: 'right' },
+          4: { cellWidth: 17, halign: 'center' },
+        },
+        margin: { left: 14, right: 14 },
+        didParseCell: (data) => {
+          if (data.section !== 'body' || data.column.index !== 3) return;
+          const t = filteredTransactions[data.row.index];
+          if (t) {
+            data.cell.styles.textColor = (t.type === 'income'
+              ? [16, 185, 129]
+              : [244, 63, 94]) as RGB;
+          }
+        },
       });
 
-      const finalY: number = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10;
+      // ── Summary band ──────────────────────────────────────────────────────
       const totalIncome   = filteredTransactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
       const totalExpenses = filteredTransactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+      const net           = totalIncome - totalExpenses;
 
-      doc.setFontSize(10);
-      doc.setTextColor(0);
-      doc.setFont('helvetica', 'bold');
-      doc.text(`Total Income:    ₹${totalIncome.toLocaleString('en-IN')}`, 14, finalY);
-      doc.text(`Total Expenses:  ₹${totalExpenses.toLocaleString('en-IN')}`, 14, finalY + 7);
-      doc.text(`Net Balance:     ₹${(totalIncome - totalExpenses).toLocaleString('en-IN')}`, 14, finalY + 14);
+      const bandY: number = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 8;
+      doc.setFillColor(248, 250, 252);
+      doc.rect(14, bandY, UW, 28, 'F');
+      doc.setDrawColor(226, 232, 240);
+      doc.rect(14, bandY, UW, 28, 'S');
 
-      doc.save('transactions.pdf');
+      const summaryItems: { label: string; value: string; rgb: RGB }[] = [
+        { label: 'TOTAL INCOME',   value: pdfAmt(totalIncome),   rgb: [16, 185, 129] as RGB },
+        { label: 'TOTAL EXPENSES', value: pdfAmt(totalExpenses), rgb: [244, 63, 94]  as RGB },
+        { label: 'NET BALANCE',    value: pdfAmt(net),           rgb: (net >= 0 ? [79, 70, 229] : [244, 63, 94]) as RGB },
+      ];
+      const summaryColW = UW / summaryItems.length;
+      summaryItems.forEach((s, i) => {
+        const x = 14 + i * summaryColW + 6;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7);
+        doc.setTextColor(100, 116, 139);
+        doc.text(s.label, x, bandY + 10);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.setTextColor(s.rgb[0], s.rgb[1], s.rgb[2]);
+        doc.text(s.value, x, bandY + 22);
+      });
+
+      // ── Footer on every page ──────────────────────────────────────────────
+      const pageCount = doc.getNumberOfPages();
+      for (let p = 1; p <= pageCount; p++) {
+        doc.setPage(p);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7.5);
+        doc.setTextColor(148, 163, 184);
+        doc.text(`Expenso  ·  Page ${p} of ${pageCount}`, pw / 2, ph - 8, { align: 'center' });
+      }
+
+      doc.save(`transactions-${format(new Date(), 'yyyy-MM-dd')}.pdf`);
       toast.success('PDF exported', {
         description: `${filteredTransactions.length} transaction${filteredTransactions.length !== 1 ? 's' : ''} exported`,
       });
@@ -268,6 +331,11 @@ const TransactionList: React.FC<Props> = ({ dateRange, searchTerm }) => {
 
   return (
     <>
+    {/* Outer wrapper provides the relative context for the filter dropdown.
+        The dropdown must NOT live inside the overflow-hidden card — CSS clips
+        absolutely-positioned children regardless of z-index when any ancestor
+        has overflow:hidden. */}
+    <div className="relative">
     <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
@@ -297,85 +365,23 @@ const TransactionList: React.FC<Props> = ({ dateRange, searchTerm }) => {
             </button>
           )}
 
-          {/* Filter button */}
-          <div className="relative">
-            <button
-              onClick={() => setFilterOpen(v => !v)}
-              className={`flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-xl border transition-colors ${
-                activeFilterCount > 0
-                  ? 'border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400'
-                  : 'border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-600'
-              }`}
-            >
-              <Filter className="h-3.5 w-3.5" />
-              Filters
-              {activeFilterCount > 0 && (
-                <span className="w-4 h-4 rounded-full bg-indigo-600 text-white text-[10px] font-bold flex items-center justify-center">
-                  {activeFilterCount}
-                </span>
-              )}
-            </button>
-
-            <AnimatePresence>
-              {filterOpen && (
-                <motion.div
-                  initial={{ opacity: 0, y: -8, scale: 0.97 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -8, scale: 0.97 }}
-                  transition={{ duration: 0.15 }}
-                  className="absolute right-0 top-full mt-2 z-20 rounded-2xl shadow-xl border w-64 p-4 space-y-3
-                             bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">Filters</span>
-                    <button onClick={() => setFilterOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-
-                  {[
-                    { label: 'Type',            field: 'type'     as const },
-                    { label: 'Category',        field: 'category' as const },
-                    { label: 'Date',            field: 'date'     as const },
-                    { label: 'Amount contains', field: 'amount'   as const },
-                  ].map(({ label, field }) => (
-                    <div key={field}>
-                      <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{label}</label>
-                      {field === 'type' ? (
-                        <select value={filters.type} onChange={e => setFilters({ ...filters, type: e.target.value as FilterState['type'] })} className={inputCls}>
-                          <option value="all">All</option>
-                          <option value="income">Income</option>
-                          <option value="expense">Expense</option>
-                        </select>
-                      ) : field === 'category' ? (
-                        <select value={filters.category} onChange={e => setFilters({ ...filters, category: e.target.value })} className={inputCls}>
-                          <option value="">All</option>
-                          {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
-                        </select>
-                      ) : (
-                        <input
-                          type={field === 'date' ? 'date' : 'number'}
-                          value={filters[field]}
-                          onChange={e => setFilters({ ...filters, [field]: e.target.value })}
-                          className={inputCls}
-                          placeholder={field === 'amount' ? 'e.g. 1000' : undefined}
-                        />
-                      )}
-                    </div>
-                  ))}
-
-                  {activeFilterCount > 0 && (
-                    <button
-                      onClick={() => setFilters({ date: '', category: '', description: '', amount: '', type: 'all' })}
-                      className="w-full text-sm text-rose-600 dark:text-rose-400 hover:text-rose-700 py-1.5 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors"
-                    >
-                      Clear all filters
-                    </button>
-                  )}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+          {/* Filter button — dropdown is rendered outside the overflow-hidden card (see below) */}
+          <button
+            onClick={() => setFilterOpen(v => !v)}
+            className={`flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-xl border transition-colors ${
+              activeFilterCount > 0
+                ? 'border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400'
+                : 'border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-600'
+            }`}
+          >
+            <Filter className="h-3.5 w-3.5" />
+            Filters
+            {activeFilterCount > 0 && (
+              <span className="w-4 h-4 rounded-full bg-indigo-600 text-white text-[10px] font-bold flex items-center justify-center">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
         </div>
       </div>
 
@@ -565,6 +571,68 @@ const TransactionList: React.FC<Props> = ({ dateRange, searchTerm }) => {
         </div>
       )}
     </div>
+
+    {/* Filter panel — rendered here, outside overflow-hidden, so it overlaps freely */}
+    <AnimatePresence>
+      {filterOpen && (
+        <motion.div
+          initial={{ opacity: 0, y: -8, scale: 0.97 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: -8, scale: 0.97 }}
+          transition={{ duration: 0.15 }}
+          className="absolute right-0 top-[66px] z-30 rounded-2xl shadow-xl border w-64 p-4 space-y-3
+                     bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">Filters</span>
+            <button onClick={() => setFilterOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          {[
+            { label: 'Type',            field: 'type'     as const },
+            { label: 'Category',        field: 'category' as const },
+            { label: 'Date',            field: 'date'     as const },
+            { label: 'Amount contains', field: 'amount'   as const },
+          ].map(({ label, field }) => (
+            <div key={field}>
+              <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{label}</label>
+              {field === 'type' ? (
+                <select value={filters.type} onChange={e => setFilters({ ...filters, type: e.target.value as FilterState['type'] })} className={inputCls}>
+                  <option value="all">All</option>
+                  <option value="income">Income</option>
+                  <option value="expense">Expense</option>
+                </select>
+              ) : field === 'category' ? (
+                <select value={filters.category} onChange={e => setFilters({ ...filters, category: e.target.value })} className={inputCls}>
+                  <option value="">All</option>
+                  {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                </select>
+              ) : (
+                <input
+                  type={field === 'date' ? 'date' : 'number'}
+                  value={filters[field]}
+                  onChange={e => setFilters({ ...filters, [field]: e.target.value })}
+                  className={inputCls}
+                  placeholder={field === 'amount' ? 'e.g. 1000' : undefined}
+                />
+              )}
+            </div>
+          ))}
+
+          {activeFilterCount > 0 && (
+            <button
+              onClick={() => setFilters({ date: '', category: '', description: '', amount: '', type: 'all' })}
+              className="w-full text-sm text-rose-600 dark:text-rose-400 hover:text-rose-700 py-1.5 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors"
+            >
+              Clear all filters
+            </button>
+          )}
+        </motion.div>
+      )}
+    </AnimatePresence>
+    </div>{/* closes .relative wrapper */}
 
     {/* ── Confirmation dialog ─────────────────────────────────────────────── */}
     <AnimatePresence>

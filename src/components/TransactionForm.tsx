@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useExpenseStore } from '../store';
-import { X, Plus, Repeat } from 'lucide-react';
+import { X } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface Props {

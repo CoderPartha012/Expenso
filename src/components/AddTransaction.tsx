@@ -42,7 +42,7 @@ const RECURRING_OPTIONS: { value: RecurringInterval; label: string }[] = [
 
 // ─── Main component ───────────────────────────────────────────────────────────
 const AddTransaction = () => {
-  const { categories, addTransaction } = useExpenseStore();
+  const { categories, addTransaction, budgets, transactions } = useExpenseStore();
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
@@ -90,9 +90,25 @@ const AddTransaction = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
-    const cat = categories.find(c => c.id === formData.category);
+
+    const cat    = categories.find(c => c.id === formData.category);
+    const amount = parseFloat(formData.amount);
+
+    // Capture spending BEFORE adding so we can detect threshold crossings
+    let spendBefore = 0;
+    if (formData.type === 'expense') {
+      const now = new Date();
+      spendBefore = transactions
+        .filter(t => {
+          const d = new Date(`${t.date}T00:00:00`);
+          return t.type === 'expense' && t.category === formData.category &&
+                 d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+        })
+        .reduce((sum, t) => sum + t.amount, 0);
+    }
+
     addTransaction({
-      amount:            parseFloat(formData.amount),
+      amount,
       type:              formData.type,
       category:          formData.category,
       description:       formData.description.trim(),
@@ -100,9 +116,32 @@ const AddTransaction = () => {
       isRecurring,
       recurringInterval: isRecurring ? recurringInterval : undefined,
     });
+
     toast.success('Transaction added', {
-      description: `${formData.type === 'income' ? '+' : '−'}₹${parseFloat(formData.amount).toLocaleString('en-IN')} · ${cat?.name ?? ''}`,
+      description: `${formData.type === 'income' ? '+' : '−'}₹${amount.toLocaleString('en-IN')} · ${cat?.name ?? ''}`,
     });
+
+    // Budget threshold check — only for expenses
+    if (formData.type === 'expense') {
+      const catBudget = budgets.find(b => b.categoryId === formData.category);
+      if (catBudget) {
+        const spendAfter   = spendBefore + amount;
+        const pctBefore    = spendBefore / catBudget.limit;
+        const pctAfter     = spendAfter  / catBudget.limit;
+        const remaining    = Math.max(0, catBudget.limit - spendAfter);
+
+        if (pctAfter >= 1.0 && pctBefore < 1.0) {
+          toast.error(`${cat?.name ?? 'Category'} budget exceeded!`, {
+            description: `₹${Math.round(spendAfter).toLocaleString('en-IN')} spent of ₹${catBudget.limit.toLocaleString('en-IN')} limit`,
+          });
+        } else if (pctAfter >= 0.8 && pctBefore < 0.8) {
+          toast.warning(`${cat?.name ?? 'Category'} at ${Math.round(pctAfter * 100)}% of budget`, {
+            description: `Only ₹${Math.round(remaining).toLocaleString('en-IN')} remaining this month`,
+          });
+        }
+      }
+    }
+
     navigate('/');
   };
 
