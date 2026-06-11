@@ -1,7 +1,47 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { Transaction, Budget, Theme, Category } from './types';
+import { Transaction, TransactionLog, Budget, Theme, Category } from './types';
 import { addDays, addMonths, addYears, format } from 'date-fns';
+
+// ── Audit-log helpers ─────────────────────────────────────────────────────────
+
+const FIELD_LABELS: Record<string, string> = {
+  amount: 'Amount', type: 'Type', category: 'Category',
+  description: 'Description', date: 'Date',
+};
+
+const fmtFieldValue = (field: string, value: unknown, cats: Category[]): string => {
+  if (field === 'amount')      return `Rs.${Number(value).toLocaleString('en-IN')}`;
+  if (field === 'type')        return String(value) === 'income' ? 'Income' : 'Expense';
+  if (field === 'category') {
+    const c = cats.find(c => c.id === value);
+    return c?.name ?? String(value);
+  }
+  if (field === 'date') {
+    const d = new Date(`${String(value)}T00:00:00`);
+    return isNaN(d.getTime()) ? String(value) : format(d, 'dd MMM yyyy');
+  }
+  return String(value ?? '');
+};
+
+const diffLogs = (
+  prev: Transaction,
+  next: Transaction,
+  cats: Category[],
+): TransactionLog[] => {
+  const now  = new Date().toISOString();
+  const keys = ['amount', 'type', 'category', 'description', 'date'] as const;
+  return keys
+    .filter(k => String(prev[k]) !== String(next[k]))
+    .map(k => ({
+      id:       crypto.randomUUID(),
+      timestamp: now,
+      action:   'edited' as const,
+      field:    FIELD_LABELS[k] ?? k,
+      oldValue: fmtFieldValue(k, prev[k], cats),
+      newValue: fmtFieldValue(k, next[k], cats),
+    }));
+};
 
 interface ExpenseState {
   transactions: Transaction[];
@@ -10,7 +50,7 @@ interface ExpenseState {
   theme: Theme;
   hasOnboarded: boolean;
   hasToured: boolean;
-  addTransaction: (transaction: Omit<Transaction, 'id'>) => void;
+  addTransaction: (transaction: Omit<Transaction, 'id'>) => string;
   deleteTransaction: (id: string) => void;
   updateTransaction: (transaction: Transaction) => void;
   setBudget: (budget: Budget) => void;
@@ -53,27 +93,37 @@ const daysAgo = (n: number) => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 
+const makeSample = (partial: Omit<Transaction, 'id' | 'createdAt' | 'logs'>): Transaction => {
+  const now = new Date().toISOString();
+  return {
+    ...partial,
+    id:        crypto.randomUUID(),
+    createdAt: now,
+    logs:      [{ id: crypto.randomUUID(), timestamp: now, action: 'created' }],
+  };
+};
+
 const buildSampleTransactions = (): Transaction[] => [
-  { id: crypto.randomUUID(), date: daysAgo(0),  type: 'expense', amount: 320,   category: '1', description: 'Lunch at office canteen', isRecurring: false },
-  { id: crypto.randomUUID(), date: daysAgo(1),  type: 'expense', amount: 150,   category: '2', description: 'Auto rickshaw to office',  isRecurring: false },
-  { id: crypto.randomUUID(), date: daysAgo(2),  type: 'expense', amount: 2200,  category: '3', description: 'Electricity bill',          isRecurring: false },
-  { id: crypto.randomUUID(), date: daysAgo(3),  type: 'expense', amount: 1800,  category: '4', description: 'New sneakers',               isRecurring: false },
-  { id: crypto.randomUUID(), date: daysAgo(4),  type: 'expense', amount: 550,   category: '5', description: 'Movie + dinner',             isRecurring: false },
-  { id: crypto.randomUUID(), date: daysAgo(5),  type: 'expense', amount: 700,   category: '6', description: 'Doctor + pharmacy',          isRecurring: false },
-  { id: crypto.randomUUID(), date: daysAgo(6),  type: 'income',  amount: 72000, category: '7', description: 'Monthly salary',             isRecurring: false },
-  { id: crypto.randomUUID(), date: daysAgo(7),  type: 'expense', amount: 480,   category: '1', description: 'Weekly groceries',           isRecurring: false },
-  { id: crypto.randomUUID(), date: daysAgo(8),  type: 'expense', amount: 280,   category: '2', description: 'Cab to airport',             isRecurring: false },
-  { id: crypto.randomUUID(), date: daysAgo(9),  type: 'expense', amount: 1299,  category: '3', description: 'Mobile recharge + OTT',      isRecurring: false },
-  { id: crypto.randomUUID(), date: daysAgo(10), type: 'expense', amount: 2500,  category: '4', description: 'Clothes shopping',            isRecurring: false },
-  { id: crypto.randomUUID(), date: daysAgo(11), type: 'expense', amount: 399,   category: '5', description: 'Netflix subscription',        isRecurring: false },
-  { id: crypto.randomUUID(), date: daysAgo(12), type: 'expense', amount: 420,   category: '1', description: 'Dinner with friends',         isRecurring: false },
-  { id: crypto.randomUUID(), date: daysAgo(14), type: 'income',  amount: 12000, category: '8', description: 'Freelance design project',    isRecurring: false },
-  { id: crypto.randomUUID(), date: daysAgo(15), type: 'expense', amount: 15000, category: '3', description: 'Monthly rent',                isRecurring: false },
-  { id: crypto.randomUUID(), date: daysAgo(18), type: 'expense', amount: 260,   category: '1', description: 'Tea & snacks',                isRecurring: false },
-  { id: crypto.randomUUID(), date: daysAgo(20), type: 'expense', amount: 950,   category: '2', description: 'Monthly metro pass',          isRecurring: false },
-  { id: crypto.randomUUID(), date: daysAgo(22), type: 'expense', amount: 600,   category: '6', description: 'Gym membership',              isRecurring: false },
-  { id: crypto.randomUUID(), date: daysAgo(25), type: 'expense', amount: 340,   category: '5', description: 'Board game night',            isRecurring: false },
-  { id: crypto.randomUUID(), date: daysAgo(28), type: 'expense', amount: 1100,  category: '4', description: 'Home decor',                  isRecurring: false },
+  makeSample({ date: daysAgo(0),  type: 'expense', amount: 320,   category: '1', description: 'Lunch at office canteen', isRecurring: false }),
+  makeSample({ date: daysAgo(1),  type: 'expense', amount: 150,   category: '2', description: 'Auto rickshaw to office',  isRecurring: false }),
+  makeSample({ date: daysAgo(2),  type: 'expense', amount: 2200,  category: '3', description: 'Electricity bill',          isRecurring: false }),
+  makeSample({ date: daysAgo(3),  type: 'expense', amount: 1800,  category: '4', description: 'New sneakers',               isRecurring: false }),
+  makeSample({ date: daysAgo(4),  type: 'expense', amount: 550,   category: '5', description: 'Movie + dinner',             isRecurring: false }),
+  makeSample({ date: daysAgo(5),  type: 'expense', amount: 700,   category: '6', description: 'Doctor + pharmacy',          isRecurring: false }),
+  makeSample({ date: daysAgo(6),  type: 'income',  amount: 72000, category: '7', description: 'Monthly salary',             isRecurring: false }),
+  makeSample({ date: daysAgo(7),  type: 'expense', amount: 480,   category: '1', description: 'Weekly groceries',           isRecurring: false }),
+  makeSample({ date: daysAgo(8),  type: 'expense', amount: 280,   category: '2', description: 'Cab to airport',             isRecurring: false }),
+  makeSample({ date: daysAgo(9),  type: 'expense', amount: 1299,  category: '3', description: 'Mobile recharge + OTT',      isRecurring: false }),
+  makeSample({ date: daysAgo(10), type: 'expense', amount: 2500,  category: '4', description: 'Clothes shopping',            isRecurring: false }),
+  makeSample({ date: daysAgo(11), type: 'expense', amount: 399,   category: '5', description: 'Netflix subscription',        isRecurring: false }),
+  makeSample({ date: daysAgo(12), type: 'expense', amount: 420,   category: '1', description: 'Dinner with friends',         isRecurring: false }),
+  makeSample({ date: daysAgo(14), type: 'income',  amount: 12000, category: '8', description: 'Freelance design project',    isRecurring: false }),
+  makeSample({ date: daysAgo(15), type: 'expense', amount: 15000, category: '3', description: 'Monthly rent',                isRecurring: false }),
+  makeSample({ date: daysAgo(18), type: 'expense', amount: 260,   category: '1', description: 'Tea & snacks',                isRecurring: false }),
+  makeSample({ date: daysAgo(20), type: 'expense', amount: 950,   category: '2', description: 'Monthly metro pass',          isRecurring: false }),
+  makeSample({ date: daysAgo(22), type: 'expense', amount: 600,   category: '6', description: 'Gym membership',              isRecurring: false }),
+  makeSample({ date: daysAgo(25), type: 'expense', amount: 340,   category: '5', description: 'Board game night',            isRecurring: false }),
+  makeSample({ date: daysAgo(28), type: 'expense', amount: 1100,  category: '4', description: 'Home decor',                  isRecurring: false }),
 ];
 
 const buildSampleBudgets = (): Budget[] => [
@@ -96,7 +146,14 @@ export const useExpenseStore = create<ExpenseState>()(
       hasToured: false,
 
       addTransaction: (transaction) => {
-        const newTransaction = { ...transaction, id: crypto.randomUUID() };
+        const id  = crypto.randomUUID();
+        const now = new Date().toISOString();
+        const newTransaction: Transaction = {
+          ...transaction,
+          id,
+          createdAt: now,
+          logs: [{ id: crypto.randomUUID(), timestamp: now, action: 'created' }],
+        };
         if (transaction.isRecurring && transaction.recurringInterval) {
           newTransaction.nextRecurringDate = format(
             getNextRecurringDate(transaction.date, transaction.recurringInterval),
@@ -104,15 +161,26 @@ export const useExpenseStore = create<ExpenseState>()(
           );
         }
         set((state) => ({ transactions: [...state.transactions, newTransaction] }));
+        return id;
       },
 
       deleteTransaction: (id) =>
         set((state) => ({ transactions: state.transactions.filter((t) => t.id !== id) })),
 
-      updateTransaction: (transaction) =>
+      updateTransaction: (transaction) => {
+        const { categories } = get();
         set((state) => ({
-          transactions: state.transactions.map((t) => (t.id === transaction.id ? transaction : t)),
-        })),
+          transactions: state.transactions.map((t) => {
+            if (t.id !== transaction.id) return t;
+            const newEntries = diffLogs(t, transaction, categories);
+            return {
+              ...transaction,
+              updatedAt: new Date().toISOString(),
+              logs: [...(t.logs ?? [{ id: crypto.randomUUID(), timestamp: t.createdAt ?? new Date().toISOString(), action: 'created' as const }]), ...newEntries],
+            };
+          }),
+        }));
+      },
 
       setBudget: (budget) =>
         set((state) => ({
@@ -151,10 +219,13 @@ export const useExpenseStore = create<ExpenseState>()(
             transaction.nextRecurringDate &&
             new Date(transaction.nextRecurringDate) <= today
           ) {
+            const now = new Date().toISOString();
             newTransactions.push({
               ...transaction,
-              id: crypto.randomUUID(),
-              date: transaction.nextRecurringDate,
+              id:        crypto.randomUUID(),
+              date:      transaction.nextRecurringDate,
+              createdAt: now,
+              logs:      [{ id: crypto.randomUUID(), timestamp: now, action: 'created' }],
               nextRecurringDate: format(
                 getNextRecurringDate(transaction.nextRecurringDate, transaction.recurringInterval!),
                 'yyyy-MM-dd'
@@ -197,9 +268,18 @@ export const useExpenseStore = create<ExpenseState>()(
           state.hasOnboarded = hasData;
           state.hasToured    = hasData;
         }
+        // v2 → v3: backfill createdAt and logs for existing transactions
+        if (version < 3 && state?.transactions) {
+          const now = new Date().toISOString();
+          state.transactions = state.transactions.map((t) => ({
+            ...t,
+            createdAt: t.createdAt ?? now,
+            logs: t.logs ?? [{ id: crypto.randomUUID(), timestamp: t.createdAt ?? now, action: 'created' as const }],
+          }));
+        }
         return state;
       },
-      version: 2,
+      version: 3,
     }
   )
 );

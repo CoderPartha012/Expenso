@@ -107,7 +107,7 @@ const AddTransaction = () => {
         .reduce((sum, t) => sum + t.amount, 0);
     }
 
-    addTransaction({
+    const newId = addTransaction({
       amount,
       type:              formData.type,
       category:          formData.category,
@@ -142,7 +142,7 @@ const AddTransaction = () => {
       }
     }
 
-    navigate('/');
+    navigate(`/transaction/${newId}`);
   };
 
   const inputBase = `w-full px-4 py-3 rounded-2xl border text-base sm:text-sm transition-colors

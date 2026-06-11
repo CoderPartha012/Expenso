@@ -9,6 +9,7 @@ import TransactionsPage from './pages/TransactionsPage';
 import ChartsPage from './pages/ChartsPage';
 import SettingsPage from './pages/SettingsPage';
 import ReportsPage from './pages/ReportsPage';
+import TransactionDetailPage from './pages/TransactionDetailPage';
 import OnboardingModal from './components/OnboardingModal';
 import AppTour from './components/AppTour';
 import { useExpenseStore } from './store';
@@ -109,6 +110,7 @@ function App() {
               <Route path="/charts" element={<ChartsPage />} />
               <Route path="/reports" element={<ReportsPage />} />
               <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/transaction/:id" element={<TransactionDetailPage />} />
             </Routes>
           </main>
         </div>

@@ -506,9 +506,14 @@ const TransactionList: React.FC<Props> = ({ dateRange, searchTerm }) => {
 
                       {/* Text */}
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate leading-snug">
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/transaction/${t.id}`)}
+                          className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate leading-snug
+                                     hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors text-left w-full"
+                        >
                           {t.description || 'Untitled'}
-                        </p>
+                        </button>
                         <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5 truncate">
                           {cat?.name ?? 'Uncategorized'}
                           {t.isRecurring && <span className="ml-1.5 text-indigo-400 dark:text-indigo-500">↺ recurring</span>}

@@ -5,6 +5,15 @@ export type Category = {
   color: string;
 };
 
+export type TransactionLog = {
+  id:        string;
+  timestamp: string;
+  action:    'created' | 'edited';
+  field?:    string;
+  oldValue?: string;
+  newValue?: string;
+};
+
 export type Transaction = {
   id: string;
   amount: number;
@@ -15,6 +24,9 @@ export type Transaction = {
   isRecurring?: boolean;
   recurringInterval?: 'monthly' | 'weekly' | 'yearly';
   nextRecurringDate?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  logs?: TransactionLog[];
 };
 
 export type Budget = {
