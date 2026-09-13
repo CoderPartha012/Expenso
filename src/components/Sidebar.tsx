@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { NavLink, Link } from 'react-router-dom';
-import { Home, Receipt, BarChart3, FileText, Settings, HelpCircle, ChevronsRight, ChevronDown, Plus, Wallet } from 'lucide-react';
+import { Home, IndianRupee, BarChart3, FileText, Settings, HelpCircle, ChevronsRight, ChevronDown, Plus, Wallet } from 'lucide-react';
 
 const items = [
   { icon: Home, label: 'Dashboard', href: '/' },
-  { icon: Receipt, label: 'Transactions', href: '/transactions' },
+  { icon: IndianRupee, label: 'Transactions', href: '/transactions' },
   { icon: BarChart3, label: 'Analytics', href: '/charts' },
   { icon: FileText, label: 'Reports', href: '/reports' },
 ];
