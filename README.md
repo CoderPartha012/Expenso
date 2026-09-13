@@ -1,184 +1,109 @@
-# Expenso — Smart Personal Finance Tracker
+﻿# Expenso
 
-Expenso is a fully client-side personal finance application built with React and TypeScript. It lets you track income and expenses, set monthly budgets per category, visualise spending trends with interactive charts, generate detailed PDF reports, and bulk-import transactions from CSV or Excel files — all without a backend or login.
+Expenso is a browser-based personal finance tracker built with React and TypeScript. Track income and expenses in Indian rupees (₹), manage monthly budgets, explore analytics, and download formatted reports. No account or backend is required.
 
-## Live Demo
-
-[https://expensobypartha.netlify.app/](https://expensobypartha.netlify.app/)
-
----
+[Live website](https://expensobypartha.netlify.app/)
 
 ## Features
 
-### Dashboard
+- **Dashboard:** all-time balance, current-month income and expenses, savings rate, previous-month comparisons, recent activity, financial progress, and budget notifications. Includes responsive mobile navigation and a collapsible desktop sidebar.
+- **Add transaction:** a four-step form covering transaction information, details, recurring schedule, and final review. Supports income, expenses, categories, dates, descriptions, and weekly/monthly/yearly recurrence.
+- **Transactions:** sorting, income/expense filtering, ten rows per page, selection across pages, and a detail dialog. Amounts use ₹, Indian digit grouping, and two decimal places. Export selected entries in the active filter, or all filtered entries, as CSV or JSON. Open the full transaction page for management and history.
+- **Import:** preview CSV, XLSX, or XLS before saving. Supports common column aliases and date formats, validates rows, maps unknown categories to Other, and provides a sample CSV template. Up to 500 rows per import; Excel parsing loads on demand.
+- **Budgets:** current saved monthly category limits, spending progress, and threshold notifications. Budget controls support adding, editing, and removing limits.
+- **Analytics:** exactly two charts: a six-month income/expense/net-savings line chart and a selected-month category expense donut. Includes a shared month selector, empty states, accessible category details, and CSV export of line-chart totals.
+- **Reports:** preset periods and validated custom date ranges; financial summaries, monthly totals, category shares, budget comparisons, and paginated transaction detail. Downloads include every transaction in the selected period.
+- **Help and Support:** searchable guides and FAQs, troubleshooting, data guidance, an illustrative transaction walkthrough, and replayable introduction and guided tour. The sample support form generates a local reference and downloadable JSON; it does not send a message or create a remote ticket.
+- **Settings and onboarding:** persisted light/dark theme, local data information, a four-screen welcome introduction, and an eight-step guided tour. Sample data is offered when no transactions exist.
 
-- **Financial summary cards** — Total Balance, Monthly Income, Monthly Expenses, and Savings Rate, each with a 7-day sparkline and a month-over-month percentage change.
-- **Monthly budget overview** — Progress bars per category coloured green (< 60 %), amber (60–80 %), or rose (≥ 80 %). Inline edit or delete any budget limit without leaving the page.
-- **Recent transactions** — A filtered list of this month's activity with one-click delete and CSV / PDF export.
-- **Expense chart** — A compact pie / area / bar chart embedded directly in the dashboard for an at-a-glance breakdown.
+## PDF and Excel reports
 
-### Transaction Management
+PDF downloads and the in-app preview use the same landscape A4 document. Reports include financial summaries, monthly totals, categories, budget comparisons when limits exist, and all transaction details. Embedded DejaVu Sans supports ₹; descriptions wrap, column headers repeat, and footers show page numbers.
 
-- **Add transactions** — Amount, type (Income / Expense), category, description, date, and optional recurring schedule (weekly / monthly / yearly).
-- **Edit & delete** — Tap any transaction to edit it inline or delete it with a confirmation dialog.
-- **Global search** — Full-text search across description and category from any page.
-- **Advanced filters** — Filter by date, category, description keyword, amount, and type simultaneously. The filter panel sits outside the card so it is never clipped by overflow.
-- **CSV export** — Download the current filtered view as a `.csv` file via react-csv.
-- **PDF export** — One-click PDF with a dark header, a formatted transaction table (correct column widths, Indian Rupee formatting), and a net income / expenses / balance summary footer. Generates per-page footers automatically via jsPDF-AutoTable.
+Excel downloads contain five worksheets: **Summary, Monthly, Categories, Budgets, and Transactions**. Amounts remain numeric with two-decimal INR formatting, dates remain date cells, and shares use percentage formatting. Sheets include styled headers, wrapped text, filters, frozen table headers, and landscape print settings. Export libraries load on demand.
 
-### Monthly Budget Limits
+Net savings means income minus expenses within the selected period, rather than all-time balance. Savings rate is net savings divided by income; periods without income display an explanatory state. Budget allocations use current saved monthly limits, prorated by calendar days covered in each month. Historical budget limits are not stored. Future-dated entries are included when they fall inside the selected range.
 
-- Set a spending limit (₹) for any of the 8 default categories.
-- Animated progress bars update in real time as you add expenses.
-- Toast warnings fire **only on threshold crossing** — a `warning` toast when a category crosses 80 %, and an `error` toast when it exceeds 100 % — never on every transaction.
-- Inline editing: click the amount text to edit the limit; press Enter or click ✓ to save.
-- Trash icon removes a budget; an "Add budget" form lets you set limits for unbudgeted categories.
+## Run locally
 
-### Analytics (Charts Page)
-
-- **Three chart types** switchable via pill tabs:
-  - **Pie chart** — Category-wise expense share with a donut centre showing the total.
-  - **Area chart** — Stacked area trend per category over time, with an average reference line.
-  - **Bar chart** — Side-by-side Income vs Expenses by month.
-- **Time range selector** — 1 M, 3 M, 6 M, or 1 Y.
-- **Category chips** — Toggle individual categories on/off to isolate specific spending.
-- CSV and PDF export directly from the charts header.
-
-### Reports Page
-
-- Comprehensive PDF report containing:
-  - Header band with report title and date range.
-  - Summary band — total income, total expenses, net savings, and savings rate.
-  - **Top spending categories** table with amount and share %.
-  - **Budget vs Actual** table — limit, spent, remaining, and colour-coded status.
-  - **Full transaction list** — date, description, category, amount, and type.
-- All amounts use Indian number formatting (`Rs.1,20,000`) — compatible with all PDF viewers without font-embedding issues.
-
-### CSV / Excel Import
-
-- **Drag-and-drop or click-to-browse** file picker accepting `.csv`, `.xlsx`, and `.xls`.
-- **Flexible column mapping** — headers matched case-insensitively. Recognised names include `date`, `description` / `desc` / `memo` / `narration`, `category`, `amount` / `amt`, `type` / `transaction type`.
-- **Auto date detection** — supports `DD/MM/YYYY` (Indian default), `YYYY-MM-DD`, `DD-MM-YYYY`, and natural language formats (`10 Jun 2026`).
-- **Preview table** before committing — valid rows show green ✓, invalid rows show ⚠️ with a hover tooltip explaining the error. The summary bar counts valid vs skipped rows.
-- **Validation rules** — rows with a missing or unparseable date, or a non-numeric amount, are skipped. Unknown categories map to "Other" automatically. Maximum 500 rows per import.
-- **Sample template** — one-click download of a pre-filled CSV template showing the expected format.
-- SheetJS (xlsx) is lazy-loaded on first Excel upload so it does not affect initial page load time.
-
-### Settings
-
-- **Dark / Light theme toggle** — persisted across sessions.
-- **Data export / reset** — manage your stored data from the settings page.
-
-### Onboarding
-
-- First-time users see a guided modal walking through the core features.
-- Includes a "Load sample data" option to explore the app immediately without manual entry.
-
-### General UX
-
-- **Fully responsive** — optimised layouts for mobile, tablet, and desktop.
-- **Dark mode** — every component supports `dark:` Tailwind variants.
-- **Smooth animations** — page transitions, modal entrances/exits, and progress bar fill via Framer Motion.
-- **Toast notifications** — success, warning, and error toasts via Sonner with descriptive subtitles.
-- **Persistent storage** — all data (transactions, categories, budgets, theme) saved to `localStorage` via Zustand `persist` middleware. No account required.
-
----
-
-## Technology Stack
-
-| Layer | Library / Tool |
-| --- | --- |
-| UI Framework | React 18 + TypeScript |
-| Build Tool | Vite 5 |
-| State Management | Zustand 4 (with `persist` middleware) |
-| Routing | React Router v6 |
-| Styling | Tailwind CSS 3 |
-| Animations | Framer Motion |
-| Charts | Recharts |
-| Date Utilities | date-fns 3 |
-| PDF Export | jsPDF + jsPDF-AutoTable |
-| CSV Export | react-csv |
-| CSV Import | PapaParse |
-| Excel Import | SheetJS (xlsx) — lazy loaded |
-| Icons | Lucide React |
-| Toasts | Sonner |
-
----
-
-## Getting Started
+Use a current Node.js LTS release and npm.
 
 ```bash
-# 1. Clone the repo
-git clone https://github.com/your-username/expenso.git
-cd expenso
-
-# 2. Install dependencies
-npm install
-
-# 3. Start the dev server
+git clone https://github.com/CoderPartha012/Expenso.git
+cd Expenso
+npm ci
 npm run dev
 ```
 
-Open [http://localhost:5173](http://localhost:5173) in your browser.
+Open the local URL printed by Vite (normally http://localhost:5173).
 
 ```bash
-# Build for production
 npm run build
-
-# Preview the production build
 npm run preview
+npm run lint
+node --test tests/*.test.mjs
+npx tsc --noEmit -p tsconfig.app.json
 ```
 
----
+On Windows PowerShell, use `npm.cmd` and `npx.cmd` if execution policy blocks the PowerShell wrappers. Deploy the generated `dist/` directory to a static host with SPA fallback to `index.html` for direct route access. No backend credentials are required.
 
-## Project Structure
+## Validation
+
+Regression tests cover analytics windows and currency precision, transaction filtering/sorting/pagination/selection and CSV escaping, report date validation, inclusive boundaries, paise precision, monthly reconciliation, and prorated budgets.
+
+```bash
+node scripts/verify-reports.mjs
+```
+
+The export script generates sample PDF/XLSX files under ignored `tmp/report-qa/` and reopens the workbook to check totals, dates, formats, worksheet count, and record count. An 85-transaction fixture produces seven PDF pages and five Excel worksheets; rendered samples have been checked for readable tables and long-description wrapping. Build, lint, and TypeScript checks are separate.
+
+## Technology
+
+| Purpose | Tools |
+| --- | --- |
+| UI and routing | React 18, TypeScript, React Router 6 |
+| Build and styling | Vite 5, Tailwind CSS 3, Radix UI primitives |
+| State and persistence | Zustand 4 with localStorage |
+| Charts and animation | Recharts, Framer Motion |
+| PDF export | jsPDF, jsPDF-AutoTable, embedded DejaVu Sans |
+| Excel export / import | ExcelJS / SheetJS |
+| CSV import / export | PapaParse / CSV serialization helpers |
+| Utilities | date-fns, Lucide React, Sonner |
+
+## Project layout
 
 ```text
 src/
-├── components/
-│   ├── AddTransaction.tsx     # Add / edit transaction form with budget threshold alerts
-│   ├── AppTour.tsx            # Interactive guided product tour
-│   ├── BudgetAlerts.tsx       # Budget warning notification logic
-│   ├── BudgetOverview.tsx     # Monthly budget progress bars with inline editing
-│   ├── Dashboard.tsx          # Main dashboard layout and financial summary cards
-│   ├── ExpenseChart.tsx       # Pie / area / bar analytics chart
-│   ├── ImportModal.tsx        # CSV & Excel bulk import with drag-and-drop preview
-│   ├── OnboardingModal.tsx    # First-run onboarding walkthrough
-│   ├── Sidebar.tsx            # Navigation sidebar (desktop + mobile)
-│   ├── TransactionForm.tsx    # Shared transaction form fields
-│   └── TransactionList.tsx    # Filterable transaction table with export
-├── pages/
-│   ├── ChartsPage.tsx         # Full-page analytics view
-│   ├── ReportsPage.tsx        # Detailed PDF report generation
-│   ├── SettingsPage.tsx       # Theme toggle and data management
-│   └── TransactionsPage.tsx   # All-transactions view with import button
-├── store.ts                   # Zustand store — state, actions, localStorage persistence
-├── types.ts                   # Shared TypeScript types (Transaction, Category, Budget …)
-├── App.tsx                    # Router setup and root layout
-└── main.tsx                   # React entry point
+  components/          Navigation, onboarding, imports, budget controls
+    ui/                Dashboard, multistep form, tables, charts, UI primitives
+  pages/               Transactions, Analytics, Reports, Settings, Help
+  lib/                 Report exports/calculations and table/analytics helpers
+  store.ts             Persisted state and transaction/category/budget actions
+  types.ts             Shared data types
+  App.tsx              Routing and root layout
+  index.css            Global styles and theme variables
+public/fonts/          PDF font and redistribution license
+tests/                 Node regression tests
+scripts/               Report export verification
 ```
 
----
+See [DASHBOARD-INTEGRATION.md](DASHBOARD-INTEGRATION.md) for implementation details of redesigned screens.
 
 ## Routes
 
-| Path | Page |
+| Path | Screen |
 | --- | --- |
 | `/` | Dashboard |
-| `/add-transaction` | Add Transaction |
-| `/transactions` | All Transactions (with Import) |
+| `/add-transaction` | Add transaction |
+| `/transactions` | Transactions and import |
+| `/transaction/:id` | Full transaction details |
 | `/charts` | Analytics |
-| `/reports` | Reports & PDF Export |
-| `/settings` | Settings |
+| `/reports` | Reports, PDF preview, PDF/Excel downloads |
+| `/settings` | Appearance and local data information |
+| `/help` | Help and Support |
 
----
+## Data and privacy
 
-## Default Categories
+Transactions, categories, budgets, theme, and onboarding preferences persist in the current browser's localStorage. There is no account synchronization or server-side transaction database. Clearing site data or switching browsers does not preserve records; download exports before clearing storage. Reports are snapshots of saved transactions at generation time.
 
-Expenso ships with 8 built-in categories: Food, Transport, Bills, Shopping, Entertainment, Health, Salary, and Other. Each has a unique colour used across charts, budget bars, and the import column mapper.
-
----
-
-## Data & Privacy
-
-All data is stored exclusively in your browser's `localStorage`. Nothing is sent to any server. Clearing site data or switching browsers will reset the app.
+Default categories: Food, Transport, Bills, Shopping, Entertainment, Health, Salary, and Other. DejaVu Sans redistribution terms are included in [public/fonts/LICENSE-DejaVu.txt](public/fonts/LICENSE-DejaVu.txt).

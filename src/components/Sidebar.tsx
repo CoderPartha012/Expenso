@@ -1,237 +1,35 @@
-import React, { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import {
-  LayoutDashboard,
-  Plus,
-  Receipt,
-  BarChart2,
-  FileText,
-  Settings,
-  ChevronLeft,
-  ChevronRight,
-  Wallet,
-  User,
-  Sun,
-  Moon,
-} from 'lucide-react';
-import { useExpenseStore } from '../store';
+import { useState } from 'react';
+import { NavLink, Link } from 'react-router-dom';
+import { Home, Receipt, BarChart3, FileText, Settings, HelpCircle, ChevronsRight, ChevronDown, Plus, Wallet } from 'lucide-react';
 
-interface NavItem {
-  icon: React.ElementType;
-  label: string;
-  mobileLabel: string;
-  href: string;
-}
-
-const navItems: NavItem[] = [
-  { icon: LayoutDashboard, label: 'Dashboard',    mobileLabel: 'Home',     href: '/'             },
-  { icon: Receipt,         label: 'Transactions', mobileLabel: 'History',  href: '/transactions' },
-  { icon: FileText,        label: 'Reports',      mobileLabel: 'Reports',  href: '/reports'      },
-  { icon: BarChart2,       label: 'Analytics',    mobileLabel: 'Charts',   href: '/charts'       },
-  { icon: Settings,        label: 'Settings',     mobileLabel: 'Settings', href: '/settings'     },
+const items = [
+  { icon: Home, label: 'Dashboard', href: '/' },
+  { icon: Receipt, label: 'Transactions', href: '/transactions' },
+  { icon: BarChart3, label: 'Analytics', href: '/charts' },
+  { icon: FileText, label: 'Reports', href: '/reports' },
 ];
 
-interface SidebarProps {
-  onCollapseChange?: (collapsed: boolean) => void;
-}
-
-const Sidebar = ({ onCollapseChange }: SidebarProps) => {
-  const [isCollapsed, setIsCollapsed] = useState(false);
-  const navigate  = useNavigate();
-  const location  = useLocation();
-  const { theme, toggleTheme } = useExpenseStore();
-
-  const toggleCollapse = () => {
-    const next = !isCollapsed;
-    setIsCollapsed(next);
-    onCollapseChange?.(next);
-  };
-
-  return (
-    <>
-      {/* ── Desktop Sidebar ─────────────────────────────────────────────── */}
-      <motion.aside
-        initial={false}
-        animate={{ width: isCollapsed ? 72 : 240 }}
-        transition={{ duration: 0.3, ease: 'easeInOut' }}
-        className="fixed top-0 left-0 h-full z-50 hidden lg:flex flex-col overflow-hidden
-                   bg-white dark:bg-slate-900
-                   border-r border-slate-100 dark:border-slate-800
-                   shadow-lg dark:shadow-slate-900/50"
-      >
-        {/* User avatar */}
-        <div className={`p-4 border-b border-slate-100 dark:border-slate-800 flex items-center gap-3 ${isCollapsed ? 'justify-center' : ''}`}>
-          <div className="flex-shrink-0 w-9 h-9 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center shadow-md">
-            <User className="h-4 w-4 text-white" />
-          </div>
-          <AnimatePresence>
-            {!isCollapsed && (
-              <motion.div
-                initial={{ opacity: 0, width: 0 }}
-                animate={{ opacity: 1, width: 'auto' }}
-                exit={{ opacity: 0, width: 0 }}
-                transition={{ duration: 0.2 }}
-                className="overflow-hidden min-w-0"
-              >
-                <p className="text-sm font-semibold text-slate-900 dark:text-white whitespace-nowrap">My Account</p>
-                <p className="text-xs text-slate-400 dark:text-slate-500 whitespace-nowrap">Personal Finance</p>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-
-        {/* Logo */}
-        <AnimatePresence>
-          {!isCollapsed && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
-              className="px-5 pt-4 pb-1 flex items-center gap-2"
-            >
-              <Wallet className="h-5 w-5 text-indigo-600 flex-shrink-0" />
-              <span className="font-bold text-lg text-slate-900 dark:text-white whitespace-nowrap">Expenso</span>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Quick Add */}
-        <div className={`px-3 pt-3 pb-1 ${isCollapsed ? 'flex justify-center' : ''}`}>
-          <button
-            id="tour-add-btn"
-            onClick={() => navigate('/add-transaction')}
-            title="Quick Add"
-            className={`flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800
-                        text-white rounded-xl shadow-sm shadow-indigo-300/40 transition-colors
-                        ${isCollapsed ? 'p-2.5' : 'w-full px-4 py-2.5'}`}
-          >
-            <Plus className="h-5 w-5 flex-shrink-0" />
-            {!isCollapsed && <span className="text-sm font-semibold whitespace-nowrap">Quick Add</span>}
-          </button>
-        </div>
-
-        {/* Nav items */}
-        <nav className="flex-1 py-3 px-2 space-y-0.5">
-          {navItems.map(item => {
-            const isActive = location.pathname === item.href;
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.href}
-                onClick={() => navigate(item.href)}
-                title={isCollapsed ? item.label : undefined}
-                className={`relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium
-                            transition-colors duration-150 group
-                            ${isActive
-                              ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400'
-                              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100'
-                            }
-                            ${isCollapsed ? 'justify-center' : ''}`}
-              >
-                {isActive && (
-                  <motion.div
-                    layoutId="activeIndicator"
-                    className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-indigo-600 rounded-r-full"
-                  />
-                )}
-                <Icon className={`h-5 w-5 flex-shrink-0 ${isActive ? 'text-indigo-600 dark:text-indigo-400' : ''}`} />
-                {!isCollapsed && <span className="whitespace-nowrap">{item.label}</span>}
-              </button>
-            );
-          })}
-        </nav>
-
-        {/* Footer: theme toggle + collapse */}
-        <div className="p-3 border-t border-slate-100 dark:border-slate-800 space-y-0.5">
-          <button
-            onClick={toggleTheme}
-            title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
-            className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl
-                        text-slate-400 dark:text-slate-500
-                        hover:bg-slate-100 dark:hover:bg-slate-800
-                        hover:text-slate-700 dark:hover:text-slate-300
-                        transition-colors duration-150
-                        ${isCollapsed ? 'justify-center' : ''}`}
-          >
-            {theme === 'dark'
-              ? <Sun  className="h-5 w-5 flex-shrink-0 text-amber-400" />
-              : <Moon className="h-5 w-5 flex-shrink-0" />
-            }
-            {!isCollapsed && (
-              <span className="text-sm">{theme === 'dark' ? 'Light mode' : 'Dark mode'}</span>
-            )}
-          </button>
-
-          <button
-            onClick={toggleCollapse}
-            title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl
-                        text-slate-400 dark:text-slate-500
-                        hover:bg-slate-100 dark:hover:bg-slate-800
-                        hover:text-slate-700 dark:hover:text-slate-300
-                        transition-colors duration-150
-                        ${isCollapsed ? 'justify-center' : ''}`}
-          >
-            {isCollapsed
-              ? <ChevronRight className="h-5 w-5" />
-              : <><ChevronLeft className="h-5 w-5" /><span className="text-sm">Collapse</span></>
-            }
-          </button>
-        </div>
-      </motion.aside>
-
-      {/* ── Mobile Bottom Navigation (4 items) ──────────────────────────── */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden
-                      bg-white dark:bg-slate-900
-                      border-t border-slate-200 dark:border-slate-800
-                      safe-area-inset-bottom">
-        <div className="flex items-stretch h-16">
-          {navItems.map(item => {
-            const isActive = location.pathname === item.href;
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.href}
-                onClick={() => navigate(item.href)}
-                className={`flex flex-col items-center justify-center gap-1 flex-1 relative
-                            transition-colors duration-150
-                            ${isActive
-                              ? 'text-indigo-600 dark:text-indigo-400'
-                              : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'
-                            }`}
-              >
-                {isActive && (
-                  <motion.div
-                    layoutId="mobileActiveIndicator"
-                    className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-indigo-600 rounded-b-full"
-                  />
-                )}
-                <Icon className="h-5 w-5" />
-                <span className="text-[10px] font-medium leading-none">{item.mobileLabel}</span>
-              </button>
-            );
-          })}
-        </div>
+export default function Sidebar({ onCollapseChange }: { onCollapseChange?: (collapsed: boolean) => void }) {
+  const [open, setOpen] = useState(true);
+  const optionClass = ({ isActive }: { isActive: boolean }) => 'flex h-11 items-center rounded-md border-l-2 text-sm font-medium transition-colors ' + (isActive ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 shadow-sm' : 'border-transparent text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-200');
+  return <>
+    <aside aria-label="Sidebar" className={`fixed top-0 left-0 z-40 hidden lg:flex h-screen flex-col border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-2 shadow-sm transition-[width] duration-300 ${open ? 'w-64' : 'w-16'}`}>
+      <Link to="/settings" aria-label="Workspace settings" className="mb-6 flex items-center gap-3 border-b border-gray-200 dark:border-gray-800 px-1 pb-4 pt-2">
+        <div className="grid size-10 shrink-0 place-content-center rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 shadow-sm"><Wallet className="h-5 w-5 text-white" /></div>
+        {open && <><div className="min-w-0 flex-1"><span className="block text-sm font-semibold">Expenso</span><span className="block text-xs text-gray-500 dark:text-gray-400">Personal Finance</span></div><ChevronDown className="h-4 w-4 text-gray-400" /></>}
+      </Link>
+      <nav aria-label="Main navigation" className="space-y-1">
+        {items.map(({ icon: Icon, label, href }) => <NavLink key={href} to={href} end={href === '/'} aria-label={label} title={!open ? label : undefined} className={optionClass}><span className="grid h-full w-11 shrink-0 place-content-center"><Icon className="h-4 w-4" /></span>{open && <span>{label}</span>}</NavLink>)}
+        <Link id="tour-add-btn" to="/add-transaction" aria-label="Add transaction" title={!open ? 'Add transaction' : undefined} className="flex h-11 items-center rounded-md bg-blue-600 text-sm font-medium text-white hover:bg-blue-700"><span className="grid h-full w-12 shrink-0 place-content-center"><Plus className="h-4 w-4" /></span>{open && <span>Add transaction</span>}</Link>
       </nav>
-
-      {/* ── Mobile FAB (floating above bottom nav) ───────────────────────── */}
-      <button
-        type="button"
-        onClick={() => navigate('/add-transaction')}
-        title="Add transaction"
-        className="fixed bottom-20 right-4 z-50 lg:hidden
-                   w-14 h-14 rounded-full bg-indigo-600
-                   flex items-center justify-center
-                   shadow-lg shadow-indigo-500/40
-                   hover:bg-indigo-700 active:scale-95
-                   transition-all duration-150"
-      >
-        <Plus className="h-6 w-6 text-white" />
-      </button>
-    </>
-  );
-};
-
-export default Sidebar;
+      <nav aria-label="Account navigation" className="mt-8 border-t border-gray-200 dark:border-gray-800 pt-4 space-y-1">
+        {open && <p className="px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Account</p>}
+        <NavLink to="/settings" aria-label="Settings" title={!open ? 'Settings' : undefined} className={optionClass}><span className="grid h-full w-11 shrink-0 place-content-center"><Settings className="h-4 w-4" /></span>{open && <span>Settings</span>}</NavLink>
+        <Link to="/help" aria-label="Help and Support" title={!open ? 'Help & Support' : undefined} className="flex h-11 items-center rounded-md text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"><span className="grid h-full w-12 shrink-0 place-content-center"><HelpCircle className="h-4 w-4" /></span>{open && <span>Help & Support</span>}</Link>
+      </nav>
+      <button type="button" aria-label={open ? 'Collapse sidebar' : 'Expand sidebar'} aria-expanded={open} onClick={() => { setOpen(!open); onCollapseChange?.(open); }} className="-mx-2 mt-auto flex items-center border-t border-gray-200 dark:border-gray-800 px-2 py-3 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"><span className="grid size-12 shrink-0 place-content-center"><ChevronsRight className={`h-4 w-4 transition-transform duration-300 ${open ? 'rotate-180' : ''}`} /></span>{open && <span className="text-sm font-medium">Hide</span>}</button>
+    </aside>
+    <nav aria-label="Mobile navigation" className="fixed bottom-0 inset-x-0 z-40 flex h-16 lg:hidden border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 safe-area-inset-bottom">{[...items, { icon: Settings, label: 'Settings', href: '/settings' }].map(({ icon: Icon, label, href }) => <NavLink key={href} to={href} end={href === '/'} className={({ isActive }) => 'flex flex-1 flex-col items-center justify-center gap-1 text-[10px] font-medium ' + (isActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400')}><Icon className="h-5 w-5" />{label}</NavLink>)}</nav>
+    <Link to="/add-transaction" aria-label="Add transaction" className="fixed bottom-20 right-4 z-40 lg:hidden grid size-12 place-content-center rounded-full bg-blue-600 text-white shadow-lg"><Plus className="h-5 w-5" /></Link>
+  </>;
+}

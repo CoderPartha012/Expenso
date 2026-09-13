@@ -2,6 +2,8 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+
+type JsPDFWithAutoTable = jsPDF & { lastAutoTable: { finalY: number } };
 import { useExpenseStore } from '../store';
 import {
   format,
@@ -276,7 +278,7 @@ const TransactionList: React.FC<Props> = ({ dateRange, searchTerm }) => {
       const totalExpenses = filteredTransactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
       const net           = totalIncome - totalExpenses;
 
-      const bandY: number = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 8;
+      const bandY: number = (doc as JsPDFWithAutoTable).lastAutoTable.finalY + 8;
       doc.setFillColor(248, 250, 252);
       doc.rect(14, bandY, UW, 28, 'F');
       doc.setDrawColor(226, 232, 240);

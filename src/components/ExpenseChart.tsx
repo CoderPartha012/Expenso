@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useExpenseStore } from '../store';
 import { BarChart2, PieChart as PieIcon, TrendingUp, Download, FileText } from 'lucide-react';
 import { toast } from 'sonner';

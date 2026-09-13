@@ -11,7 +11,7 @@ const TransactionForm: React.FC<Props> = ({ onClose }) => {
   const { categories, addTransaction } = useExpenseStore();
   const [formData, setFormData] = useState({
     amount: '',
-    type: 'expense',
+    type: 'expense' as 'income' | 'expense',
     category: categories[0].id,
     description: '',
     date: new Date().toISOString().split('T')[0],

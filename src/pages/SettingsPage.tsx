@@ -1,4 +1,4 @@
-import React from 'react';
+import { Link } from 'react-router-dom';
 import { Sun, Moon, Info } from 'lucide-react';
 import { useExpenseStore } from '../store';
 
@@ -6,7 +6,8 @@ const SettingsPage = () => {
   const { theme, toggleTheme, transactions } = useExpenseStore();
 
   return (
-    <div className="max-w-lg mx-auto space-y-4">
+    <div id="tour-settings" className="max-w-lg mx-auto space-y-4">
+      <header><h1 className="text-3xl font-bold">Settings</h1><p className="mt-2 text-sm text-muted-foreground">Manage appearance and review your locally stored data.</p></header>
       {/* Appearance */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
         <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800">
@@ -25,6 +26,7 @@ const SettingsPage = () => {
             </div>
           </div>
           <button
+            aria-label="Toggle light and dark mode"
             onClick={toggleTheme}
             className={`relative w-11 h-6 rounded-full transition-colors duration-200 flex-shrink-0 ${
               theme === 'dark' ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-slate-600'
@@ -52,6 +54,7 @@ const SettingsPage = () => {
         </div>
       </div>
 
+      <Link to="/help" className="block rounded-2xl border bg-card p-5 hover:bg-muted"><h2 className="font-semibold">Help & Support</h2><p className="mt-1 text-sm text-muted-foreground">Screen guides, FAQs, practice walkthrough, and tour replay.</p></Link>
       {/* About */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
         <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800">

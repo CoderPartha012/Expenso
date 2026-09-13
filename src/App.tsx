@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
-import { Sun, Moon, Wallet } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Link, useNavigate } from 'react-router-dom';
+import { Sun, Moon, Wallet, HelpCircle } from 'lucide-react';
 import { Toaster } from 'sonner';
 import Dashboard from './components/Dashboard';
 import AddTransaction from './components/AddTransaction';
@@ -8,6 +8,7 @@ import Sidebar from './components/Sidebar';
 import TransactionsPage from './pages/TransactionsPage';
 import ChartsPage from './pages/ChartsPage';
 import SettingsPage from './pages/SettingsPage';
+import HelpPage from './pages/HelpPage';
 import ReportsPage from './pages/ReportsPage';
 import TransactionDetailPage from './pages/TransactionDetailPage';
 import OnboardingModal from './components/OnboardingModal';
@@ -23,18 +24,16 @@ const ThemeManager = () => {
   return null;
 };
 
-// Renders the onboarding modal (new users) and the feature tour (post-onboarding, dashboard only).
+// Renders the onboarding modal (new users) and the feature tour across the current application screens.
 const Overlays = () => {
   const { hasOnboarded, hasToured, setOnboarded, loadSampleData } = useExpenseStore();
-  const location = useLocation();
-  const onDashboard = location.pathname === '/';
 
   return (
     <>
       {!hasOnboarded && (
         <OnboardingModal onClose={setOnboarded} onLoadSample={loadSampleData} />
       )}
-      {hasOnboarded && !hasToured && onDashboard && (
+      {hasOnboarded && !hasToured && (
         <AppTour />
       )}
     </>
@@ -47,7 +46,7 @@ const KeyboardShortcuts = () => {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement).tagName;
-      const inInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+      const inInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (e.target as HTMLElement).isContentEditable || Boolean(document.querySelector('[role=dialog], dialog[open], [role=listbox]'));
       if (e.key === 'n' && !inInput && !e.ctrlKey && !e.metaKey && !e.altKey) {
         navigate('/add-transaction');
       }
@@ -68,16 +67,16 @@ function App() {
       <KeyboardShortcuts />
       <Overlays />
 
-      <div className="min-h-screen app-background text-slate-900 dark:text-slate-100">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 text-slate-900 dark:text-slate-100">
         <Sidebar onCollapseChange={setIsSidebarCollapsed} />
 
         <div
           className={`min-h-screen transition-all duration-300 pb-16 lg:pb-0 ${
-            isSidebarCollapsed ? 'lg:ml-[72px]' : 'lg:ml-[240px]'
+            isSidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'
           }`}
         >
           {/* Top nav — visible on all sizes */}
-          <nav className="glass-morphism border-b border-slate-200/40 dark:border-slate-700/40 sticky top-0 z-10">
+          <nav className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-10 lg:hidden">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="flex items-center justify-between h-14 lg:h-16">
                 {/* Mobile brand (sidebar hidden on mobile) */}
@@ -85,7 +84,7 @@ function App() {
                   <Wallet className="h-5 w-5 text-indigo-600" />
                   <span className="font-bold text-slate-900 dark:text-white">Expenso</span>
                 </div>
-                <div className="hidden lg:block" />
+                <Link to="/help" aria-label="Help and Support" className="ml-auto mr-3 p-2 text-slate-500"><HelpCircle className="h-5 w-5" /></Link>
 
                 {/* Theme toggle */}
                 <button
@@ -110,6 +109,7 @@ function App() {
               <Route path="/charts" element={<ChartsPage />} />
               <Route path="/reports" element={<ReportsPage />} />
               <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/help" element={<HelpPage />} />
               <Route path="/transaction/:id" element={<TransactionDetailPage />} />
             </Routes>
           </main>
