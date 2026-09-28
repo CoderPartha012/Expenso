@@ -12,6 +12,7 @@ dist
 dist-ssr
 *.local
 tmp/
+brag-output/work/
 .claude/settings.local.json
 
 # Editor directories and files
