@@ -4,6 +4,12 @@ Expenso is a browser-based personal finance tracker built with React and TypeScr
 
 [Live website](https://expensobypartha.netlify.app/)
 
+## How It Works
+
+Watch a 20 second overview of Expenso in action — dashboard, transaction entry, analytics, reports, and more.
+
+[![Watch the video](public/brag-poster.jpg)](https://github.com/CoderPartha012/Expenso/raw/main/public/brag.mp4)
+
 ## Features
 
 - **Dashboard:** all-time balance, current-month income and expenses, savings rate, previous-month comparisons, recent activity, financial progress, and budget notifications. Includes responsive mobile navigation and a collapsible desktop sidebar.
